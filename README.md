@@ -2,39 +2,51 @@
 
 Platformë digjitale për menaxhimin dhe organizimin e proceseve shkollore.
 
-## Qëllimi
+## Gjendja aktuale
 
-eShkolla do të ndërtohet si projekt modular, i mirëstrukturuar dhe i zgjerueshëm, me dokumentacion dhe standarde të qarta që nga faza fillestare.
+Projekti ka një Web demo të publikuar në GitHub Pages dhe një aplikacion Android me Kotlin + Jetpack Compose. Autentikimi aktual është demo; API dhe baza reale do të ndërtohen në fazën pasuese.
 
-## Struktura e repository-t
+## Struktura
 
 ```text
 .
+├── app/                         # Android / Kotlin / Compose
+│   └── src/main/java/com/ltline/eshkolla/
+│       ├── app/
+│       ├── data/
+│       ├── domain/
+│       ├── features/
+│       └── ui/
+├── web/                         # Web demo për testim të vazhdueshëm
+│   ├── index.html
+│   ├── app.js
+│   └── styles.css
 ├── docs/
 │   ├── api/
 │   ├── architecture/
 │   ├── database/
 │   └── requirements/
-├── src/
-│   ├── app/
-│   ├── components/
-│   ├── features/
-│   ├── services/
-│   ├── models/
-│   └── utils/
-├── tests/
-├── .gitignore
 └── README.md
 ```
 
-## Parimet fillestare
+## Rolet
 
-- Gjuhë dhe ndërfaqe në shqip.
-- Arkitekturë modulare.
-- Siguri dhe role të ndara të përdoruesve.
-- Dokumentim para implementimit të moduleve kryesore.
-- Kod i mirëstrukturuar dhe i mirëmbajtshëm.
+- Administrator
+- Drejtor
+- Mësimdhënës
+- Nxënës
+- Prind
 
-## Statusi
+## Parimi i zhvillimit
 
-Faza fillestare: ngritja e strukturës bazë dhe dokumentacionit teknik.
+Çdo funksion i ri zhvillohet dhe kontrollohet fillimisht në Web, pastaj integrohet në Android dhe më vonë lidhet me API-në dhe bazën reale.
+
+`Domain → Data demo → Web test → Android → API → Database → Testim`
+
+## Web
+
+Demo: https://ltlinedocumentation.github.io/eShkolla/
+
+## Siguria
+
+Kredencialet e demo-s janë vetëm për zhvillim. Para përdorimit real duhet autentikim server-side, ruajtje e sigurt e fjalëkalimeve, token-e, autorizim sipas rolit, auditim dhe validim në backend.

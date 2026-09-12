@@ -31,6 +31,12 @@
       <div id="modules" class="module-grid"></div>
       <section id="moduleView" class="card hidden">
         <div class="section-title"><div><p class="eyebrow">Moduli</p><h3 id="moduleTitle"></h3></div><button id="backButton" class="secondary">← Paneli</button></div>
+        <div id="moduleControls" class="module-controls hidden">
+          <div class="search-box"><span>⌕</span><input id="tableSearch" type="search" placeholder="Kërko emër, klasë, ID..." autocomplete="off"></div>
+          <select id="tableFilter" aria-label="Filtro listën"><option value="">Të gjitha</option></select>
+          <button id="clearFilters" class="secondary filter-clear">Pastro</button>
+        </div>
+        <p id="resultCount" class="result-count"></p>
         <div id="moduleContent"></div>
       </section>
       <section class="card"><p class="eyebrow">Aktivitetet</p><h3>Gjendja e sistemit</h3><div id="activityList" class="activity-list"></div></section>

@@ -8,7 +8,7 @@ class FakeAuthRepository : AuthRepository {
     private val demoUsers = listOf(
         User("1", "admin", "Administrator", UserRole.ADMINISTRATOR),
         User("2", "drejtor", "Drejtor i shkollës", UserRole.DREJTOR),
-        User("3", "mesimdhenes", "Mësimdhënës Demo", UserRole.MESIMDHENES),
+        User("3", "leonard.tahiraj", "Leonard Tahiraj", UserRole.MESIMDHENES),
         User("4", "nxenes", "Nxënës Demo", UserRole.NXENES),
         User("5", "prind", "Prind Demo", UserRole.PRIND)
     )

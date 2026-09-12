@@ -9,10 +9,13 @@ import com.ltline.eshkolla.domain.auth.AuthState
 import com.ltline.eshkolla.features.auth.AuthViewModel
 import com.ltline.eshkolla.features.auth.LoginScreen
 import com.ltline.eshkolla.features.dashboard.DashboardScreen
+import com.ltline.eshkolla.features.students.StudentScreen
+import com.ltline.eshkolla.features.students.StudentViewModel
 
 private object Routes {
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
+    const val STUDENTS = "students"
 }
 
 @Composable
@@ -34,7 +37,21 @@ fun EShkollaApp() {
         }
         composable(Routes.DASHBOARD) {
             val user = (authViewModel.state.value as? AuthState.LoggedIn)?.user
-            DashboardScreen(user = user)
+            DashboardScreen(
+                user = user,
+                onModuleClick = { module ->
+                    when (module) {
+                        "students" -> navController.navigate(Routes.STUDENTS)
+                    }
+                }
+            )
+        }
+        composable(Routes.STUDENTS) {
+            val studentViewModel: StudentViewModel = viewModel()
+            StudentScreen(
+                viewModel = studentViewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }

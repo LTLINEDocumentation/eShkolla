@@ -11,6 +11,7 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import java.util.UUID
 
@@ -22,7 +23,6 @@ fun Application.configureRouting() {
         get("/health") {
             call.respond(HealthResponse("ok", "eShkolla API", "0.1.0"))
         }
-
         routeApiV1()
     }
 }

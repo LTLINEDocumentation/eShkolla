@@ -9,10 +9,7 @@
 <body>
   <main class="container">
     <header class="header">
-      <div>
-        <h1>eShkolla</h1>
-        <p>Platformë për menaxhimin e shkollës</p>
-      </div>
+      <div><h1>eShkolla</h1><p>Platformë për menaxhimin e shkollës</p></div>
       <span id="status" class="status">Demo</span>
     </header>
 
@@ -27,34 +24,17 @@
 
     <section id="dashboard" class="hidden">
       <div class="dashboard-head card">
-        <div>
-          <p class="eyebrow">Paneli kryesor</p>
-          <h2 id="welcome"></h2>
-          <p id="roleDescription" class="muted"></p>
-        </div>
+        <div><p class="eyebrow">Paneli kryesor</p><h2 id="welcome"></h2><p id="roleDescription" class="muted"></p></div>
         <button id="logoutButton" class="secondary">Dil</button>
       </div>
-
       <div id="stats" class="stats"></div>
       <div id="modules" class="module-grid"></div>
-
-      <section class="card">
-        <div class="section-title">
-          <div>
-            <p class="eyebrow">Aktivitetet</p>
-            <h3>Gjendja e sistemit</h3>
-          </div>
-        </div>
-        <div id="activityList" class="activity-list"></div>
+      <section id="moduleView" class="card hidden">
+        <div class="section-title"><div><p class="eyebrow">Moduli</p><h3 id="moduleTitle"></h3></div><button id="backButton" class="secondary">← Paneli</button></div>
+        <div id="moduleContent"></div>
       </section>
-
-      <section class="card profile-card">
-        <div>
-          <p class="eyebrow">Llogaria</p>
-          <h3>Profili</h3>
-        </div>
-        <div id="profile" class="profile-grid"></div>
-      </section>
+      <section class="card"><p class="eyebrow">Aktivitetet</p><h3>Gjendja e sistemit</h3><div id="activityList" class="activity-list"></div></section>
+      <section class="card"><p class="eyebrow">Llogaria</p><h3>Profili</h3><div id="profile" class="profile-grid"></div></section>
     </section>
   </main>
   <script src="./app.js"></script>

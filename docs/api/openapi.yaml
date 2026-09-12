@@ -1,0 +1,154 @@
+openapi: 3.0.3
+info:
+  title: eShkolla API
+  version: 0.1.0
+  description: REST API për platformën e menaxhimit të shkollës eShkolla.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: API is healthy
+  /api/v1/auth/login:
+    post:
+      summary: Kyç përdoruesin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Kyçja u krye
+        '400':
+          description: Input i pavlefshëm
+        '401':
+          description: Kredenciale të pasakta
+  /api/v1/auth/logout:
+    post:
+      summary: Mbyll sesionin
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Sesioni u mbyll
+  /api/v1/auth/me:
+    get:
+      summary: Merr përdoruesin aktual
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Përdoruesi aktual
+        '401':
+          description: Pa autentikim
+  /api/v1/students:
+    get:
+      summary: Lista e nxënësve
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: active
+          schema: { type: boolean }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Lista e paginuar
+    post:
+      summary: Shto nxënës
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentRequest'
+      responses:
+        '201':
+          description: Nxënësi u krijua
+        '400':
+          description: Input i pavlefshëm
+  /api/v1/students/{id}:
+    get:
+      summary: Merr nxënësin
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Nxënësi }
+        '404': { description: Nuk u gjet }
+    put:
+      summary: Ndrysho nxënësin
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentRequest'
+      responses:
+        '200': { description: Nxënësi u përditësua }
+        '400': { description: Input i pavlefshëm }
+        '404': { description: Nuk u gjet }
+    delete:
+      summary: Çaktivizo nxënësin
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        '204': { description: U çaktivizua }
+        '404': { description: Nuk u gjet }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    StudentRequest:
+      type: object
+      required: [fullName, classId, birthDate]
+      properties:
+        fullName: { type: string }
+        classId: { type: string }
+        birthDate: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        fullName: { type: string }
+        role: { type: string }
+        isActive: { type: boolean }
+    Student:
+      type: object
+      properties:
+        id: { type: string }
+        fullName: { type: string }
+        classId: { type: string }
+        birthDate: { type: string }
+        isActive: { type: boolean }

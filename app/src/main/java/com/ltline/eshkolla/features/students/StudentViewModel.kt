@@ -2,7 +2,7 @@ package com.ltline.eshkolla.features.students
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ltline.eshkolla.data.school.FakeSchoolRepositories
+import com.ltline.eshkolla.data.school.FakeStudentRepository
 import com.ltline.eshkolla.domain.model.Student
 import com.ltline.eshkolla.domain.school.StudentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +17,7 @@ sealed interface StudentListState {
 }
 
 class StudentViewModel(
-    private val repository: StudentRepository = FakeSchoolRepositories.studentRepository()
+    private val repository: StudentRepository = FakeStudentRepository()
 ) : ViewModel() {
     private val _state = MutableStateFlow<StudentListState>(StudentListState.Loading)
     val state: StateFlow<StudentListState> = _state.asStateFlow()
@@ -46,8 +46,10 @@ class StudentViewModel(
 
     fun toggleActive(student: Student) {
         viewModelScope.launch {
-            runCatching { repository.setStudentActive(student.id, !student.isActive); repository.getStudents() }
-                .onSuccess { _state.value = StudentListState.Success(it) }
+            runCatching {
+                repository.setStudentActive(student.id, !student.isActive)
+                repository.getStudents()
+            }.onSuccess { _state.value = StudentListState.Success(it) }
                 .onFailure { _state.value = StudentListState.Error(it.message ?: "Nuk u ndryshua statusi.") }
         }
     }

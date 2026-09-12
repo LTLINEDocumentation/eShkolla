@@ -2,6 +2,7 @@
 // Shtresa është e ndarë nga app.js që profili mund të zëvendësohet lehtë kur API real të jetë aktiv.
 
 demoUsers.mesimdhenes.fullName = "Leonard Tahiraj";
+demoUsers["leonard.tahiraj"] = { ...demoUsers.mesimdhenes, fullName: "Leonard Tahiraj", roleLabel: "Mësimdhënës i Matematikës" };
 data.users[2] = ["3", "Leonard Tahiraj", "leonard.tahiraj", "Mësimdhënës", "Aktiv"];
 data.teachers[0] = ["M001", "Leonard Tahiraj", "Matematikë", "T-1001", "Aktiv"];
 
@@ -57,7 +58,7 @@ const selectHtml = (name, options) => `<select name="${esc(name)}" required>${op
 
 function addTeacherGrade() {
   teacherModal("Regjistro vlerësim", [
-    field("Nxënësi", "student", selectHtml("student", teacherStudents.map(x => `${x[0]}|${x[1]}`).map(x => x))),
+    field("Nxënësi", "student", selectHtml("student", teacherStudents.map(x => `${x[0]}|${x[1]}`))),
     field("Lënda", "subject", `<input name="subject" value="Matematikë" readonly>`),
     field("Lloji i vlerësimit", "type", selectHtml("type", ["Test", "Detyrë shtëpie", "Aktivitet në klasë", "Pjesëmarrje", "Projekt"])),
     field("Nota", "grade", selectHtml("grade", ["1", "2", "3", "4", "5"])),
@@ -108,7 +109,6 @@ module = function(k) {
   teacherActionButtons(k);
 };
 
-// E bëjmë qartë në panel se ky është profili personal i mësimdhënësit.
 const originalDashboard = dashboard;
 dashboard = function(user) {
   if (user && user.id === "3") user = { ...user, fullName: "Leonard Tahiraj", roleLabel: "Mësimdhënës i Matematikës" };

@@ -1,5 +1,6 @@
 package com.ltline.eshkolla.features.dashboard
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,10 +17,13 @@ import androidx.compose.ui.unit.dp
 import com.ltline.eshkolla.domain.model.User
 import com.ltline.eshkolla.domain.model.UserRole
 
-private data class DashboardModule(val title: String, val description: String)
+private data class DashboardModule(val key: String, val title: String, val description: String)
 
 @Composable
-fun DashboardScreen(user: User?) {
+fun DashboardScreen(
+    user: User?,
+    onModuleClick: (String) -> Unit = {}
+) {
     val role = user?.role ?: UserRole.NXENES
     val modules = modulesFor(role)
 
@@ -44,7 +48,9 @@ fun DashboardScreen(user: User?) {
             }
         }
         items(modules) { module ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { onModuleClick(module.key) }
+            ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(module.title, style = MaterialTheme.typography.titleLarge)
                     Text(module.description, modifier = Modifier.padding(top = 4.dp))
@@ -56,40 +62,40 @@ fun DashboardScreen(user: User?) {
 
 private fun modulesFor(role: UserRole): List<DashboardModule> = when (role) {
     UserRole.ADMINISTRATOR -> listOf(
-        DashboardModule("Përdoruesit", "Menaxhimi i llogarive dhe roleve."),
-        DashboardModule("Shkolla", "Parametrat dhe të dhënat e institucionit."),
-        DashboardModule("Klasat", "Klasat dhe organizimi i nxënësve."),
-        DashboardModule("Mësimdhënësit", "Regjistri i stafit mësimor."),
-        DashboardModule("Nxënësit", "Regjistri qendror i nxënësve."),
-        DashboardModule("Lëndët", "Lëndët dhe ngarkesa javore.")
+        DashboardModule("users", "Përdoruesit", "Menaxhimi i llogarive dhe roleve."),
+        DashboardModule("school", "Shkolla", "Parametrat dhe të dhënat e institucionit."),
+        DashboardModule("classes", "Klasat", "Klasat dhe organizimi i nxënësve."),
+        DashboardModule("teachers", "Mësimdhënësit", "Regjistri i stafit mësimor."),
+        DashboardModule("students", "Nxënësit", "Regjistri qendror i nxënësve."),
+        DashboardModule("subjects", "Lëndët", "Lëndët dhe ngarkesa javore.")
     )
     UserRole.DREJTOR -> listOf(
-        DashboardModule("Klasat", "Pasqyra e klasave."),
-        DashboardModule("Mësimdhënësit", "Stafi dhe ngarkesa."),
-        DashboardModule("Nxënësit", "Lista dhe të dhënat."),
-        DashboardModule("Orari", "Orari mësimor."),
-        DashboardModule("Njoftimet", "Komunikimet e shkollës."),
-        DashboardModule("Raportet", "Raporte dhe statistika.")
+        DashboardModule("classes", "Klasat", "Pasqyra e klasave."),
+        DashboardModule("teachers", "Mësimdhënësit", "Stafi dhe ngarkesa."),
+        DashboardModule("students", "Nxënësit", "Lista dhe të dhënat."),
+        DashboardModule("schedule", "Orari", "Orari mësimor."),
+        DashboardModule("announcements", "Njoftimet", "Komunikimet e shkollës."),
+        DashboardModule("reports", "Raportet", "Raporte dhe statistika.")
     )
     UserRole.MESIMDHENES -> listOf(
-        DashboardModule("Klasat e mia", "Klasat që i mëson."),
-        DashboardModule("Nxënësit", "Nxënësit sipas klasës."),
-        DashboardModule("Notat", "Regjistrimi i vlerësimeve."),
-        DashboardModule("Orari", "Orari yt mësimor."),
-        DashboardModule("Njoftimet", "Njoftimet e shkollës.")
+        DashboardModule("classes", "Klasat e mia", "Klasat që i mëson."),
+        DashboardModule("students", "Nxënësit", "Nxënësit sipas klasës."),
+        DashboardModule("grades", "Notat", "Regjistrimi i vlerësimeve."),
+        DashboardModule("schedule", "Orari", "Orari yt mësimor."),
+        DashboardModule("announcements", "Njoftimet", "Njoftimet e shkollës.")
     )
     UserRole.NXENES -> listOf(
-        DashboardModule("Orari", "Orari yt mësimor."),
-        DashboardModule("Notat", "Notat dhe suksesi."),
-        DashboardModule("Njoftimet", "Njoftimet e shkollës."),
-        DashboardModule("Profili", "Të dhënat e profilit.")
+        DashboardModule("schedule", "Orari", "Orari yt mësimor."),
+        DashboardModule("grades", "Notat", "Notat dhe suksesi."),
+        DashboardModule("announcements", "Njoftimet", "Njoftimet e shkollës."),
+        DashboardModule("profile", "Profili", "Të dhënat e profilit.")
     )
     UserRole.PRIND -> listOf(
-        DashboardModule("Fëmijët", "Fëmijët e lidhur me llogarinë."),
-        DashboardModule("Notat", "Suksesi dhe vlerësimet."),
-        DashboardModule("Orari", "Orari i fëmijës."),
-        DashboardModule("Njoftimet", "Komunikimet e shkollës."),
-        DashboardModule("Profili", "Të dhënat e llogarisë.")
+        DashboardModule("children", "Fëmijët", "Fëmijët e lidhur me llogarinë."),
+        DashboardModule("grades", "Notat", "Suksesi dhe vlerësimet."),
+        DashboardModule("schedule", "Orari", "Orari i fëmijës."),
+        DashboardModule("announcements", "Njoftimet", "Komunikimet e shkollës."),
+        DashboardModule("profile", "Profili", "Të dhënat e llogarisë.")
     )
 }
 

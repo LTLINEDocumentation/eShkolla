@@ -14,7 +14,7 @@ class AuthService {
     private val accounts = listOf(
         account("1", "admin", "Administrator", "ADMINISTRATOR", "123456"),
         account("2", "drejtor", "Drejtor i shkollës", "DREJTOR", "123456"),
-        account("3", "mesimdhenes", "Mësimdhënës Demo", "MESIMDHENES", "123456"),
+        account("3", "leonard.tahiraj", "Leonard Tahiraj", "MESIMDHENES", "123456"),
         account("4", "nxenes", "Nxënës Demo", "NXENES", "123456"),
         account("5", "prind", "Prind Demo", "PRIND", "123456")
     )

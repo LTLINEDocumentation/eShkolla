@@ -7,109 +7,81 @@ const demoUsers = {
 };
 
 const data = {
-  users: [
-    ["1", "Administrator", "admin", "Administrator", "Aktiv"],
-    ["2", "Drejtor i shkollës", "drejtor", "Drejtor", "Aktiv"],
-    ["3", "Mësimdhënës Demo", "mesimdhenes", "Mësimdhënës", "Aktiv"],
-    ["4", "Nxënës Demo", "nxenes", "Nxënës", "Aktiv"],
-    ["5", "Prind Demo", "prind", "Prind", "Aktiv"]
-  ],
-  students: [
-    ["NX001", "Ardit Krasniqi", "VIII/1", "01.03.2012", "Aktiv"],
-    ["NX002", "Era Gashi", "VIII/1", "18.07.2012", "Aktiv"],
-    ["NX003", "Diar Berisha", "VIII/2", "09.02.2012", "Aktiv"],
-    ["NX004", "Suela Hoxha", "VIII/2", "22.11.2012", "Aktiv"]
-  ],
-  teachers: [
-    ["M001", "Arben Shala", "Matematikë", "T-1001", "Aktiv"],
-    ["M002", "Besa Krasniqi", "Gjuhë shqipe", "T-1002", "Aktiv"],
-    ["M003", "Ilir Berisha", "Fizikë", "T-1003", "Aktiv"]
-  ],
-  classes: [
-    ["C01", "VI/1", "Klasa 6", "Arben Shala", "2026/2027"],
-    ["C02", "VII/1", "Klasa 7", "Besa Krasniqi", "2026/2027"],
-    ["C03", "VIII/1", "Klasa 8", "Arben Shala", "2026/2027"],
-    ["C04", "VIII/2", "Klasa 8", "Ilir Berisha", "2026/2027"]
-  ],
-  subjects: [
-    ["L01", "Matematikë", "MAT", "4 orë/javë"],
-    ["L02", "Gjuhë shqipe", "GJSH", "4 orë/javë"],
-    ["L03", "Fizikë", "FIZ", "2 orë/javë"],
-    ["L04", "Informatikë", "INF", "1 orë/javë"]
-  ],
-  schedule: [
-    ["E Hënë", "1", "Matematikë", "VIII/1", "Arben Shala"],
-    ["E Hënë", "2", "Gjuhë shqipe", "VIII/1", "Besa Krasniqi"],
-    ["E Martë", "1", "Fizikë", "VIII/2", "Ilir Berisha"],
-    ["E Martë", "2", "Matematikë", "VIII/2", "Arben Shala"]
-  ],
-  grades: [
-    ["Ardit Krasniqi", "Matematikë", "5", "Periudha I"],
-    ["Era Gashi", "Matematikë", "4", "Periudha I"],
-    ["Diar Berisha", "Matematikë", "5", "Periudha I"],
-    ["Suela Hoxha", "Gjuhë shqipe", "5", "Periudha I"]
-  ],
-  announcements: [
-    ["Njoftim i përgjithshëm", "Takimi i këshillit të klasës zhvillohet të premten.", "Sot"],
-    ["Orari", "Orari i ri mësimor është publikuar.", "Dje"],
-    ["Aktivitet", "Aktiviteti shkollor i muajit është në përgatitje.", "08.09.2026"]
-  ]
+  users: [["1","Administrator","admin","Administrator","Aktiv"],["2","Drejtor i shkollës","drejtor","Drejtor","Aktiv"],["3","Mësimdhënës Demo","mesimdhenes","Mësimdhënës","Aktiv"],["4","Nxënës Demo","nxenes","Nxënës","Aktiv"],["5","Prind Demo","prind","Prind","Aktiv"]],
+  students: [["NX001","Ardit Krasniqi","VIII/1","01.03.2012","Aktiv"],["NX002","Era Gashi","VIII/1","18.07.2012","Aktiv"],["NX003","Diar Berisha","VIII/2","09.02.2012","Aktiv"],["NX004","Suela Hoxha","VIII/2","22.11.2012","Aktiv"],["NX005","Majlinda Berisha","IX/1","14.05.2011","Aktiv"],["NX006","Aron Krasniqi","IX/1","27.08.2011","Aktiv"]],
+  teachers: [["M001","Arben Shala","Matematikë","T-1001","Aktiv"],["M002","Besa Krasniqi","Gjuhë shqipe","T-1002","Aktiv"],["M003","Ilir Berisha","Fizikë","T-1003","Aktiv"],["M004","Fiona Gashi","Informatikë","T-1004","Aktiv"]],
+  classes: [["C01","VI/1","Klasa 6","Arben Shala","2026/2027"],["C02","VII/1","Klasa 7","Besa Krasniqi","2026/2027"],["C03","VIII/1","Klasa 8","Arben Shala","2026/2027"],["C04","VIII/2","Klasa 8","Ilir Berisha","2026/2027"],["C05","IX/1","Klasa 9","Besa Krasniqi","2026/2027"]],
+  subjects: [["L01","Matematikë","MAT","4 orë/javë"],["L02","Gjuhë shqipe","GJSH","4 orë/javë"],["L03","Fizikë","FIZ","2 orë/javë"],["L04","Informatikë","INF","1 orë/javë"]],
+  schedule: [["E Hënë","1","Matematikë","VIII/1","Arben Shala"],["E Hënë","2","Gjuhë shqipe","VIII/1","Besa Krasniqi"],["E Martë","1","Fizikë","VIII/2","Ilir Berisha"],["E Martë","2","Matematikë","VIII/2","Arben Shala"],["E Mërkurë","1","Informatikë","IX/1","Fiona Gashi"]],
+  grades: [["Ardit Krasniqi","Matematikë","5","Periudha I"],["Era Gashi","Matematikë","4","Periudha I"],["Diar Berisha","Matematikë","5","Periudha I"],["Suela Hoxha","Gjuhë shqipe","5","Periudha I"],["Majlinda Berisha","Fizikë","4","Periudha I"]],
+  announcements: [["Njoftim i përgjithshëm","Takimi i këshillit të klasës zhvillohet të premten.","Sot"],["Orari","Orari i ri mësimor është publikuar.","Dje"],["Aktivitet","Aktiviteti shkollor i muajit është në përgatitje.","08.09.2026"]]
 };
 
 const roleConfig = {
-  ADMINISTRATOR: { description: "Menaxhim i plotë i platformës dhe parametrave të shkollës.", stats: [["Përdorues", "124"],["Nxënës", "286"],["Mësimdhënës", "32"],["Klasat", "18"]], modules: [["users","Përdoruesit","Menaxho llogaritë dhe rolet."],["school","Shkolla","Të dhënat e institucionit."],["classes","Klasat","Klasat dhe paralelet."],["teachers","Mësimdhënësit","Regjistri i stafit."],["students","Nxënësit","Regjistri i nxënësve."],["subjects","Lëndët","Lëndët mësimore."]] },
-  DREJTOR: { description: "Mbikëqyrje e punës së shkollës, stafit, nxënësve dhe raporteve.", stats: [["Nxënës", "286"],["Mësimdhënës", "32"],["Klasat", "18"],["Njoftime", "4"]], modules: [["classes","Klasat","Organizimi i klasave."],["teachers","Mësimdhënësit","Stafi dhe ngarkesa."],["students","Nxënësit","Lista e nxënësve."],["schedule","Orari","Orari mësimor."],["announcements","Njoftimet","Komunikimet."],["reports","Raportet","Pasqyra të performancës."]] },
-  MESIMDHENES: { description: "Mjetet e përditshme për mësimdhënie, nxënësit dhe vlerësimin.", stats: [["Klasat", "4"],["Nxënës", "96"],["Lëndët", "2"],["Nota për t'u regjistruar", "12"]], modules: [["classes","Klasat e mia","Klasat që i mëson."],["students","Nxënësit","Nxënësit sipas klasës."],["grades","Notat","Regjistro vlerësimet."],["schedule","Orari","Orari yt."],["announcements","Njoftimet","Njoftimet e shkollës."],["profile","Profili","Të dhënat personale."]] },
-  NXENES: { description: "Hapësira personale për orarin, notat dhe njoftimet.", stats: [["Klasa", "VIII/2"],["Lëndë", "12"],["Nota", "28"],["Njoftime", "3"]], modules: [["schedule","Orari","Orari yt."],["grades","Notat","Notat dhe suksesi."],["announcements","Njoftimet","Njoftimet e shkollës."],["profile","Profili","Të dhënat e profilit."]] },
-  PRIND: { description: "Pasqyrë e fëmijëve, suksesit, orarit dhe komunikimeve.", stats: [["Fëmijë", "1"],["Nota", "28"],["Njoftime", "3"],["Mungesa", "2"]], modules: [["children","Fëmijët","Fëmijët e lidhur."],["grades","Notat","Suksesi dhe vlerësimet."],["schedule","Orari","Orari i fëmijës."],["announcements","Njoftimet","Komunikimet."],["profile","Profili","Llogaria."]] }
+  ADMINISTRATOR:{description:"Menaxhim i plotë i platformës dhe parametrave të shkollës.",stats:[["Përdorues","124"],["Nxënës","286"],["Mësimdhënës","32"],["Klasat","18"]],modules:[["users","Përdoruesit","Menaxho llogaritë dhe rolet."],["school","Shkolla","Të dhënat e institucionit."],["classes","Klasat","Klasat dhe paralelet."],["teachers","Mësimdhënësit","Regjistri i stafit."],["students","Nxënësit","Regjistri i nxënësve."],["subjects","Lëndët","Lëndët mësimore."]]},
+  DREJTOR:{description:"Mbikëqyrje e punës së shkollës, stafit, nxënësve dhe raporteve.",stats:[["Nxënës","286"],["Mësimdhënës","32"],["Klasat","18"],["Njoftime","4"]],modules:[["classes","Klasat","Organizimi i klasave."],["teachers","Mësimdhënësit","Stafi dhe ngarkesa."],["students","Nxënësit","Lista e nxënësve."],["schedule","Orari","Orari mësimor."],["announcements","Njoftimet","Komunikimet."],["reports","Raportet","Pasqyra të performancës."]]},
+  MESIMDHENES:{description:"Mjetet e përditshme për mësimdhënie, nxënësit dhe vlerësimin.",stats:[["Klasat","4"],["Nxënës","96"],["Lëndët","2"],["Nota për t'u regjistruar","12"]],modules:[["classes","Klasat e mia","Klasat që i mëson."],["students","Nxënësit","Nxënësit sipas klasës."],["grades","Notat","Regjistro vlerësimet."],["schedule","Orari","Orari yt."],["announcements","Njoftimet","Njoftimet e shkollës."],["profile","Profili","Të dhënat personale."]]},
+  NXENES:{description:"Hapësira personale për orarin, notat dhe njoftimet.",stats:[["Klasa","VIII/2"],["Lëndë","12"],["Nota","28"],["Njoftime","3"]],modules:[["schedule","Orari","Orari yt."],["grades","Notat","Notat dhe suksesi."],["announcements","Njoftimet","Njoftimet e shkollës."],["profile","Profili","Të dhënat e profilit."]]},
+  PRIND:{description:"Pasqyrë e fëmijëve, suksesit, orarit dhe komunikimeve.",stats:[["Fëmijë","1"],["Nota","28"],["Njoftime","3"],["Mungesa","2"]],modules:[["children","Fëmijët","Fëmijët e lidhur."],["grades","Notat","Suksesi dhe vlerësimet."],["schedule","Orari","Orari i fëmijës."],["announcements","Njoftimet","Komunikimet."],["profile","Profili","Llogaria."]]}
 };
 
-const moduleIcons = { users:"👥", school:"🏫", classes:"📚", teachers:"🧑‍🏫", students:"🎓", subjects:"📖", schedule:"🗓️", announcements:"📢", reports:"📊", grades:"⭐", profile:"👤", children:"👨‍👩‍👧" };
-const $ = id => document.getElementById(id);
-
-const moduleDefinitions = {
-  users: ["Përdoruesit", ["ID","Emri","Përdoruesi","Roli","Statusi"], data.users],
-  students: ["Nxënësit", ["ID","Emri","Klasa","Datëlindja","Statusi"], data.students],
-  teachers: ["Mësimdhënësit", ["ID","Emri","Lënda kryesore","Nr. punës","Statusi"], data.teachers],
-  classes: ["Klasat", ["ID","Paralela","Niveli","Kujdestari","Viti shkollor"], data.classes],
-  subjects: ["Lëndët", ["ID","Lënda","Shkurtesa","Ngarkesa"], data.subjects],
-  schedule: ["Orari", ["Dita","Ora","Lënda","Klasa","Mësimdhënësi"], data.schedule],
-  grades: ["Notat", ["Nxënësi","Lënda","Nota","Periudha"], data.grades],
-  announcements: ["Njoftimet", ["Titulli","Përmbajtja","Data"], data.announcements],
-  reports: ["Raportet", ["Raporti","Përshkrimi","Statusi"], [["Suksesi","Pasqyra e suksesit sipas klasave","Gati"],["Mungesat","Pasqyra e mungesave","Gati"],["Ngarkesa","Ngarkesa e mësimdhënësve","Në përgatitje"]]],
-  school: ["Shkolla", ["Fusha","Vlera"], [["Emri","eShkolla Demo"],["Viti shkollor","2026/2027"],["Adresa","—"],["Statusi","Aktive"]]],
-  profile: ["Profili", ["Fusha","Vlera"], [["Përdoruesi","Sipas llogarisë"],["Roli","Sipas llogarisë"],["Statusi","Aktiv"]]],
-  children: ["Fëmijët", ["ID","Emri","Klasa","Statusi"], [["NX003","Diar Berisha","VIII/2","Aktiv"]]]
+const moduleIcons={users:"👥",school:"🏫",classes:"📚",teachers:"🧑‍🏫",students:"🎓",subjects:"📖",schedule:"🗓️",announcements:"📢",reports:"📊",grades:"⭐",profile:"👤",children:"👨‍👩‍👧"};
+const moduleDefinitions={
+ users:["Përdoruesit",["ID","Emri","Përdoruesi","Roli","Statusi"],data.users],
+ students:["Nxënësit",["ID","Emri","Klasa","Datëlindja","Statusi"],data.students],
+ teachers:["Mësimdhënësit",["ID","Emri","Lënda kryesore","Nr. punës","Statusi"],data.teachers],
+ classes:["Klasat",["ID","Paralela","Niveli","Kujdestari","Viti shkollor"],data.classes],
+ subjects:["Lëndët",["ID","Lënda","Shkurtesa","Ngarkesa"],data.subjects],
+ schedule:["Orari",["Dita","Ora","Lënda","Klasa","Mësimdhënësi"],data.schedule],
+ grades:["Notat",["Nxënësi","Lënda","Nota","Periudha"],data.grades],
+ announcements:["Njoftimet",["Titulli","Përmbajtja","Data"],data.announcements],
+ reports:["Raportet",["Raporti","Përshkrimi","Statusi"],[["Suksesi","Pasqyra e suksesit sipas klasave","Gati"],["Mungesat","Pasqyra e mungesave","Gati"],["Ngarkesa","Ngarkesa e mësimdhënësve","Në përgatitje"]]],
+ school:["Shkolla",["Fusha","Vlera"],[["Emri","eShkolla Demo"],["Viti shkollor","2026/2027"],["Adresa","—"],["Statusi","Aktive"]]],
+ profile:["Profili",["Fusha","Vlera"],[["Përdoruesi","Sipas llogarisë"],["Roli","Sipas llogarisë"],["Statusi","Aktiv"]]],
+ children:["Fëmijët",["ID","Emri","Klasa","Statusi"],[["NX003","Diar Berisha","VIII/2","Aktiv"]]]
 };
 
-function renderModule(key) {
-  const definition = moduleDefinitions[key];
-  if (!definition) return;
-  const [title, headers, rows] = definition;
-  $("moduleTitle").textContent = title;
-  $("moduleContent").innerHTML = `<div class="table-wrap"><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table></div><p class="module-note">Kjo është të dhënë demo. Në fazën API, këto të dhëna do të lexohen nga baza reale.</p>`;
-  $("moduleView").classList.remove("hidden");
-  $("modules").classList.add("hidden");
-  $("moduleView").scrollIntoView({ behavior: "smooth", block: "start" });
+const $=id=>document.getElementById(id);
+let activeModuleRows=[]; let activeHeaders=[];
+
+function esc(value){return String(value).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\':'&#92;','"':'&quot;'}[c]));}
+function getFilterOptions(key,headers,rows){
+  const candidates=key==="students"?["Klasa","Statusi"]:key==="teachers"?["Lënda kryesore","Statusi"]:key==="classes"?["Paralela","Kujdestari"]:key==="schedule"?["Dita","Klasa","Mësimdhënësi"]:key==="grades"?["Lënda","Periudha"]:key==="users"?["Roli","Statusi"]:[];
+  const idx=candidates.find(h=>headers.includes(h));
+  if(idx===undefined)return [];
+  const i=headers.indexOf(idx); return [idx,...[...new Set(rows.map(r=>r[i]))].sort()];
 }
-
-function showDashboard(user) {
-  const config = roleConfig[user.role];
-  $("login").classList.add("hidden"); $("dashboard").classList.remove("hidden");
-  $("status").textContent="I kyçur"; $("status").className="status success";
-  $("welcome").textContent=`Mirë se vini, ${user.fullName}`; $("roleDescription").textContent=config.description;
-  $("stats").innerHTML=config.stats.map(([l,v])=>`<div class="stat-card"><span>${l}</span><strong>${v}</strong></div>`).join("");
-  $("modules").innerHTML=config.modules.map(([k,t,d])=>`<button class="module-card" data-module="${k}"><span class="module-icon">${moduleIcons[k]||"•"}</span><span><strong>${t}</strong><small>${d}</small></span><span class="arrow">→</span></button>`).join("");
+function renderRows(rows){
+  $("moduleContent").innerHTML=`<div class="table-wrap"><table><thead><tr>${activeHeaders.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.length?rows.map(row=>`<tr>${row.map(cell=>`<td>${esc(cell)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${activeHeaders.length}" class="empty-state">Nuk u gjet asnjë rezultat.</td></tr>`}</tbody></table></div><p class="module-note">Të dhëna demo. Në fazën API, këto të dhëna do të lexohen nga baza reale.</p>`;
+  $("resultCount").textContent=`${rows.length} ${rows.length===1?"rezultat":"rezultate"}`;
+}
+function applyFilters(){
+  const search=$("tableSearch").value.trim().toLocaleLowerCase("sq-AL"); const filter=$("tableFilter").value;
+  const rows=activeModuleRows.filter(row=>{const matchesSearch=!search||row.some(v=>String(v).toLocaleLowerCase("sq-AL").includes(search)); const matchesFilter=!filter||row.some(v=>String(v)===filter); return matchesSearch&&matchesFilter;});
+  renderRows(rows);
+}
+function renderModule(key){
+  const definition=moduleDefinitions[key]; if(!definition)return;
+  const [title,headers,rows]=definition; activeModuleRows=rows; activeHeaders=headers;
+  $("moduleTitle").textContent=title; $("moduleControls").classList.toggle("hidden",rows.length===0); $("tableSearch").value="";
+  const options=getFilterOptions(key,headers,rows); const filterName=options.shift();
+  $("tableFilter").innerHTML=`<option value="">${filterName?`Të gjitha (${filterName})`:"Të gjitha"}</option>`+(options||[]).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  renderRows(rows); $("moduleView").classList.remove("hidden"); $("modules").classList.add("hidden"); $("moduleView").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function showDashboard(user){
+  const config=roleConfig[user.role]; $("login").classList.add("hidden");$("dashboard").classList.remove("hidden");$("status").textContent="I kyçur";$("status").className="status success";
+  $("welcome").textContent=`Mirë se vini, ${user.fullName}`;$("roleDescription").textContent=config.description;
+  $("stats").innerHTML=config.stats.map(([l,v])=>`<div class="stat-card"><span>${esc(l)}</span><strong>${esc(v)}</strong></div>`).join("");
+  $("modules").innerHTML=config.modules.map(([k,t,d])=>`<button class="module-card" data-module="${k}"><span class="module-icon">${moduleIcons[k]||"•"}</span><span><strong>${esc(t)}</strong><small>${esc(d)}</small></span><span class="arrow">→</span></button>`).join("");
   $("activityList").innerHTML=["Autentikimi u krye me sukses.","Paneli u ngarkua sipas rolit.","Modulet demo janë aktive."].map((t,i)=>`<div class="activity"><span class="dot"></span><span>${t}</span><small>${i===0?"Tani":"Sot"}</small></div>`).join("");
-  $("profile").innerHTML=`<div><span>Përdoruesi</span><strong>${getUsername(user)}</strong></div><div><span>Emri</span><strong>${user.fullName}</strong></div><div><span>Roli</span><strong>${user.roleLabel}</strong></div><div><span>Statusi</span><strong>Aktiv</strong></div>`;
-  document.querySelectorAll(".module-card").forEach(b=>b.addEventListener("click",()=>renderModule(b.dataset.module)));
-  $("moduleView").classList.add("hidden"); $("modules").classList.remove("hidden");
+  $("profile").innerHTML=`<div><span>Përdoruesi</span><strong>${esc(getUsername(user))}</strong></div><div><span>Emri</span><strong>${esc(user.fullName)}</strong></div><div><span>Roli</span><strong>${esc(user.roleLabel)}</strong></div><div><span>Statusi</span><strong>Aktiv</strong></div>`;
+  document.querySelectorAll(".module-card").forEach(b=>b.addEventListener("click",()=>renderModule(b.dataset.module))); $("moduleView").classList.add("hidden");$("modules").classList.remove("hidden");
 }
-
-function getUsername(user){ return Object.keys(demoUsers).find(k=>demoUsers[k].id===user.id)||"demo"; }
-function showLogin(){ $("dashboard").classList.add("hidden"); $("login").classList.remove("hidden"); $("status").textContent="Demo"; $("status").className="status"; $("error").textContent=""; }
-$("loginButton").addEventListener("click",()=>{ const username=$("username").value.trim().toLowerCase(); const password=$("password").value; const user=demoUsers[username]; if(!username||!password){$("error").textContent="Plotësoni përdoruesin dhe fjalëkalimin.";return;} if(!user||password!=="123456"){$("error").textContent="Përdoruesi ose fjalëkalimi është i pasaktë.";return;} $("error").textContent=""; sessionStorage.setItem("eshkollaUser",JSON.stringify(user)); showDashboard(user); });
+function getUsername(user){return Object.keys(demoUsers).find(k=>demoUsers[k].id===user.id)||"demo";}
+function showLogin(){$("dashboard").classList.add("hidden");$("login").classList.remove("hidden");$("status").textContent="Demo";$("status").className="status";$("error").textContent="";}
+$("loginButton").addEventListener("click",()=>{const username=$("username").value.trim().toLowerCase(),password=$("password").value,user=demoUsers[username];if(!username||!password){$("error").textContent="Plotësoni përdoruesin dhe fjalëkalimin.";return;}if(!user||password!=="123456"){$("error").textContent="Përdoruesi ose fjalëkalimi është i pasaktë.";return;}$("error").textContent="";sessionStorage.setItem("eshkollaUser",JSON.stringify(user));showDashboard(user);});
 $("password").addEventListener("keydown",e=>{if(e.key==="Enter")$("loginButton").click();});
 $("logoutButton").addEventListener("click",()=>{sessionStorage.removeItem("eshkollaUser");showLogin();});
 $("backButton").addEventListener("click",()=>{$("moduleView").classList.add("hidden");$("modules").classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});});
-const savedUser=sessionStorage.getItem("eshkollaUser"); if(savedUser){try{showDashboard(JSON.parse(savedUser));}catch{sessionStorage.removeItem("eshkollaUser");}}
+$("tableSearch").addEventListener("input",applyFilters); $("tableFilter").addEventListener("change",applyFilters); $("clearFilters").addEventListener("click",()=>{$("tableSearch").value="";$("tableFilter").value="";applyFilters();});
+const savedUser=sessionStorage.getItem("eshkollaUser");if(savedUser){try{showDashboard(JSON.parse(savedUser));}catch{sessionStorage.removeItem("eshkollaUser");}}

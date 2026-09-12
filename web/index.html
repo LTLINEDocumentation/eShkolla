@@ -11,31 +11,50 @@
     <header class="header">
       <div>
         <h1>eShkolla</h1>
-        <p>Paneli web i kontrollit dhe testimit</p>
+        <p>Platformë për menaxhimin e shkollës</p>
       </div>
       <span id="status" class="status">Demo</span>
     </header>
 
-    <section id="login" class="card">
+    <section id="login" class="card login-card">
       <h2>Hyr në sistem</h2>
-      <label>Përdoruesi<input id="username" autocomplete="username"></label>
-      <label>Fjalëkalimi<input id="password" type="password" autocomplete="current-password"></label>
+      <label>Përdoruesi<input id="username" autocomplete="username" placeholder="p.sh. admin"></label>
+      <label>Fjalëkalimi<input id="password" type="password" autocomplete="current-password" placeholder="••••••"></label>
       <button id="loginButton">Hyr</button>
       <p id="error" class="error"></p>
-      <small>Demo: admin / 123456</small>
+      <small>Demo: të gjithë përdoruesit përdorin fjalëkalimin <strong>123456</strong>.</small>
     </section>
 
     <section id="dashboard" class="hidden">
-      <div class="card">
-        <h2>Paneli kryesor</h2>
-        <p id="welcome"></p>
+      <div class="dashboard-head card">
+        <div>
+          <p class="eyebrow">Paneli kryesor</p>
+          <h2 id="welcome"></h2>
+          <p id="roleDescription" class="muted"></p>
+        </div>
+        <button id="logoutButton" class="secondary">Dil</button>
       </div>
-      <div class="grid">
-        <article class="card"><h3>Njoftimet</h3><p>Moduli është në përgatitje.</p></article>
-        <article class="card"><h3>Mësimet</h3><p>Moduli është në përgatitje.</p></article>
-        <article class="card"><h3>Profili</h3><p id="profile"></p></article>
-      </div>
-      <button id="logoutButton" class="secondary">Dil</button>
+
+      <div id="stats" class="stats"></div>
+      <div id="modules" class="module-grid"></div>
+
+      <section class="card">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">Aktivitetet</p>
+            <h3>Gjendja e sistemit</h3>
+          </div>
+        </div>
+        <div id="activityList" class="activity-list"></div>
+      </section>
+
+      <section class="card profile-card">
+        <div>
+          <p class="eyebrow">Llogaria</p>
+          <h3>Profili</h3>
+        </div>
+        <div id="profile" class="profile-grid"></div>
+      </section>
     </section>
   </main>
   <script src="./app.js"></script>

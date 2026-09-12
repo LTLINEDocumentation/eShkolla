@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eShkolla Web</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <h1>eShkolla</h1>
+        <p>Paneli web i kontrollit dhe testimit</p>
+      </div>
+      <span id="status" class="status">Demo</span>
+    </header>
+
+    <section id="login" class="card">
+      <h2>Hyr në sistem</h2>
+      <label>Përdoruesi<input id="username" autocomplete="username"></label>
+      <label>Fjalëkalimi<input id="password" type="password" autocomplete="current-password"></label>
+      <button id="loginButton">Hyr</button>
+      <p id="error" class="error"></p>
+      <small>Demo: admin / 123456</small>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <div class="card">
+        <h2>Paneli kryesor</h2>
+        <p id="welcome"></p>
+      </div>
+      <div class="grid">
+        <article class="card"><h3>Njoftimet</h3><p>Moduli është në përgatitje.</p></article>
+        <article class="card"><h3>Mësimet</h3><p>Moduli është në përgatitje.</p></article>
+        <article class="card"><h3>Profili</h3><p id="profile"></p></article>
+      </div>
+      <button id="logoutButton" class="secondary">Dil</button>
+    </section>
+  </main>
+  <script src="./app.js"></script>
+</body>
+</html>

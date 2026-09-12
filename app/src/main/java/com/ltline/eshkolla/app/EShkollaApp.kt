@@ -5,6 +5,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.ltline.eshkolla.domain.auth.AuthState
 import com.ltline.eshkolla.features.auth.AuthViewModel
 import com.ltline.eshkolla.features.auth.LoginScreen
 import com.ltline.eshkolla.features.dashboard.DashboardScreen
@@ -19,10 +20,7 @@ fun EShkollaApp() {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel()
 
-    NavHost(
-        navController = navController,
-        startDestination = Routes.LOGIN
-    ) {
+    NavHost(navController = navController, startDestination = Routes.LOGIN) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 state = authViewModel.state.value,
@@ -35,7 +33,8 @@ fun EShkollaApp() {
             )
         }
         composable(Routes.DASHBOARD) {
-            DashboardScreen()
+            val user = (authViewModel.state.value as? AuthState.LoggedIn)?.user
+            DashboardScreen(user = user)
         }
     }
 }

@@ -1,10 +1,11 @@
 package com.ltline.eshkolla.app
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.ltline.eshkolla.features.auth.AuthViewModel
 import com.ltline.eshkolla.features.auth.LoginScreen
 import com.ltline.eshkolla.features.dashboard.DashboardScreen
 
@@ -16,6 +17,7 @@ private object Routes {
 @Composable
 fun EShkollaApp() {
     val navController = rememberNavController()
+    val authViewModel: AuthViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -23,6 +25,8 @@ fun EShkollaApp() {
     ) {
         composable(Routes.LOGIN) {
             LoginScreen(
+                state = authViewModel.state.value,
+                onLogin = authViewModel::login,
                 onLoginSuccess = {
                     navController.navigate(Routes.DASHBOARD) {
                         popUpTo(Routes.LOGIN) { inclusive = true }

@@ -12,7 +12,6 @@
       <div><h1>eShkolla</h1><p>Platformë për menaxhimin e shkollës</p></div>
       <span id="status" class="status">Demo</span>
     </header>
-
     <section id="login" class="card login-card">
       <h2>Hyr në sistem</h2>
       <label>Përdoruesi<input id="username" autocomplete="username" placeholder="p.sh. admin"></label>
@@ -21,51 +20,20 @@
       <p id="error" class="error"></p>
       <small>Demo: të gjithë përdoruesit përdorin fjalëkalimin <strong>123456</strong>.</small>
     </section>
-
     <section id="dashboard" class="hidden">
-      <div class="dashboard-head card">
-        <div><p class="eyebrow">Paneli kryesor</p><h2 id="welcome"></h2><p id="roleDescription" class="muted"></p></div>
-        <button id="logoutButton" class="secondary">Dil</button>
-      </div>
-      <div id="stats" class="stats"></div>
-      <div id="modules" class="module-grid"></div>
-      <section id="moduleView" class="card hidden">
-        <div class="section-title">
-          <div><p class="eyebrow">Moduli</p><h3 id="moduleTitle"></h3></div>
-          <div class="section-actions"><button id="addStudentButton" class="primary hidden">+ Shto nxënës</button><button id="backButton" class="secondary">← Paneli</button></div>
-        </div>
-        <div id="moduleControls" class="module-controls hidden">
-          <div class="search-box"><span>⌕</span><input id="tableSearch" type="search" placeholder="Kërko emër, klasë, ID..." autocomplete="off"></div>
-          <select id="tableFilter" aria-label="Filtro listën"><option value="">Të gjitha</option></select>
-          <select id="tableSort" aria-label="Rendit listën"><option value="">Rendit sipas...</option></select>
-          <button id="clearFilters" class="secondary filter-clear">Pastro</button>
-        </div>
-        <p id="resultCount" class="result-count"></p>
-        <div id="moduleContent"></div>
+      <div class="dashboard-head card"><div><p class="eyebrow">Paneli kryesor</p><h2 id="welcome"></h2><p id="roleDescription" class="muted"></p></div><button id="logoutButton" class="secondary">Dil</button></div>
+      <div id="stats" class="stats"></div><div id="modules" class="module-grid"></div>
+      <section id="moduleView" class="card hidden"><div class="section-title"><div><p class="eyebrow">Moduli</p><h3 id="moduleTitle"></h3></div><div class="section-actions"><button id="addStudentButton" class="primary hidden">+ Shto nxënës</button><button id="backButton" class="secondary">← Paneli</button></div></div>
+        <div id="moduleControls" class="module-controls hidden"><div class="search-box"><span>⌕</span><input id="tableSearch" type="search" placeholder="Kërko emër, klasë, ID..." autocomplete="off"></div><select id="tableFilter" aria-label="Filtro listën"><option value="">Të gjitha</option></select><select id="tableSort" aria-label="Rendit listën"><option value="">Rendit sipas...</option></select><button id="clearFilters" class="secondary filter-clear">Pastro</button></div>
+        <p id="resultCount" class="result-count"></p><div id="moduleContent"></div>
       </section>
       <section class="card"><p class="eyebrow">Aktivitetet</p><h3>Gjendja e sistemit</h3><div id="activityList" class="activity-list"></div></section>
       <section class="card"><p class="eyebrow">Llogaria</p><h3>Profili</h3><div id="profile" class="profile-grid"></div></section>
     </section>
   </main>
-
-  <div id="studentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="studentModalTitle">
-    <div class="modal-card">
-      <div class="section-title"><div><p class="eyebrow">Regjistri i nxënësit</p><h3 id="studentModalTitle">Shto nxënës</h3></div><button id="closeStudentModal" class="secondary">Mbyll</button></div>
-      <form id="studentForm" class="form-grid">
-        <input id="studentId" type="hidden">
-        <label>Emri i plotë<input id="studentName" required placeholder="p.sh. Ardit Krasniqi"></label>
-        <label>Klasa<input id="studentClass" required placeholder="p.sh. VIII/1"></label>
-        <label>Datëlindja<input id="studentBirthDate" required placeholder="dd.mm.vvvv"></label>
-        <label>Statusi<select id="studentStatus"><option>Aktiv</option><option>Joaktiv</option></select></label>
-        <div class="form-actions"><button type="button" id="cancelStudent" class="secondary">Anulo</button><button type="submit" class="primary">Ruaj</button></div>
-      </form>
-    </div>
-  </div>
-
-  <div id="studentDetailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="studentDetailTitle">
-    <div class="modal-card"><div class="section-title"><div><p class="eyebrow">Profili</p><h3 id="studentDetailTitle">Nxënësi</h3></div><button id="closeStudentDetail" class="secondary">Mbyll</button></div><div id="studentDetailContent" class="profile-grid"></div><div class="form-actions"><button id="editStudentFromDetail" class="primary">Ndrysho</button><button id="deactivateStudentFromDetail" class="secondary">Çaktivizo</button></div></div>
-  </div>
-
+  <div id="studentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="studentModalTitle"><div class="modal-card"><div class="section-title"><div><p class="eyebrow">Regjistri i nxënësit</p><h3 id="studentModalTitle">Shto nxënës</h3></div><button id="closeStudentModal" class="secondary">Mbyll</button></div><form id="studentForm" class="form-grid"><input id="studentId" type="hidden"><label>Emri i plotë<input id="studentName" required placeholder="p.sh. Ardit Krasniqi"></label><label>Klasa<input id="studentClass" required placeholder="p.sh. VIII/1"></label><label>Datëlindja<input id="studentBirthDate" required placeholder="dd.mm.vvvv"></label><label>Statusi<select id="studentStatus"><option>Aktiv</option><option>Joaktiv</option></select></label><div class="form-actions"><button type="button" id="cancelStudent" class="secondary">Anulo</button><button type="submit" class="primary">Ruaj</button></div></form></div></div>
+  <div id="studentDetailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="studentDetailTitle"><div class="modal-card"><div class="section-title"><div><p class="eyebrow">Profili</p><h3 id="studentDetailTitle">Nxënësi</h3></div><button id="closeStudentDetail" class="secondary">Mbyll</button></div><div id="studentDetailContent" class="profile-grid"></div><div class="form-actions"><button id="editStudentFromDetail" class="primary">Ndrysho</button><button id="deactivateStudentFromDetail" class="secondary">Çaktivizo</button></div></div></div>
   <script src="./app.js"></script>
+  <script src="./teacher-demo.js"></script>
 </body>
 </html>

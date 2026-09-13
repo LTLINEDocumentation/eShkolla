@@ -2,7 +2,7 @@
 // Shtresa është e ndarë nga app.js që profili mund të zëvendësohet lehtë kur API real të jetë aktiv.
 
 demoUsers.mesimdhenes.fullName = "Leonard Tahiraj";
-demoUsers["leonard.tahiraj"] = { ...demoUsers.mesimdhenes, fullName: "Leonard Tahiraj", roleLabel: "Mësimdhënës i Matematikës" };
+demoUsers["leonard.tahiraj"] = { ...demoUsers.mesimdhenes, username: "leonard.tahiraj", fullName: "Leonard Tahiraj", roleLabel: "Mësimdhënës i Matematikës" };
 data.users[2] = ["3", "Leonard Tahiraj", "leonard.tahiraj", "Mësimdhënës", "Aktiv"];
 data.teachers[0] = ["M001", "Leonard Tahiraj", "Matematikë", "T-1001", "Aktiv"];
 
@@ -111,9 +111,28 @@ module = function(k) {
 
 const originalDashboard = dashboard;
 dashboard = function(user) {
-  if (user && user.id === "3") user = { ...user, fullName: "Leonard Tahiraj", roleLabel: "Mësimdhënës i Matematikës" };
+  if (user && user.id === "3") user = { ...user, username: "leonard.tahiraj", fullName: "Leonard Tahiraj", roleLabel: "Mësimdhënës i Matematikës" };
   originalDashboard(user);
 };
+
+// Ky handler është mbrojtja kryesore për hyrjen e Leonardit.
+// Ekzekutohet para handler-it të app.js dhe pranon vetëm llogarinë demo të mësimdhënësit.
+document.addEventListener("click", function(event) {
+  const button = event.target.closest("#loginButton");
+  if (!button) return;
+  const username = String(document.getElementById("username")?.value || "").trim().toLowerCase();
+  const password = String(document.getElementById("password")?.value || "");
+  if (username !== "leonard.tahiraj") return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const error = document.getElementById("error");
+  if (password !== "123456") {
+    if (error) error.textContent = "Fjalëkalimi është i pasaktë. Për demo përdor 123456.";
+    return;
+  }
+  if (error) error.textContent = "";
+  dashboard({ ...demoUsers["leonard.tahiraj"], username: "leonard.tahiraj", fullName: "Leonard Tahiraj", roleLabel: "Mësimdhënës i Matematikës" });
+}, true);
 
 const teacherStyle = document.createElement("style");
 teacherStyle.textContent = `

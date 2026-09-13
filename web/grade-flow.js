@@ -1,23 +1,28 @@
-// Rrjedha e vleresimit per mesimdhenesin: fillimisht klasa, pastaj nxenesit, pastaj vleresimi.
+// Rrjedhat kryesore të mësimdhënësit: fillimisht klasa, pastaj nxënësi, pastaj veprimi.
 (function () {
   const baseModule = module;
-  let selectedGradeClass = "";
+  let selectedClass = "";
+  let activeFlow = "grades";
 
-  const teacherClasses = [...new Set((data.teacherGrades || []).map(r => r[1]))];
+  const teacherClasses = [...new Set((teacherStudents || []).map(r => r[1]))];
 
   function escFlow(v) {
     return String(v).replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
   }
 
   function studentsForClass(className) {
-    return teacherStudents.filter(s => s[1] === className);
+    return (teacherStudents || []).filter(s => s[1] === className);
   }
 
   function gradeCount(studentName, className) {
     return (data.teacherGrades || []).filter(r => r[0] === studentName && r[1] === className).length;
   }
 
-  function renderGradeFlow() {
+  function absenceCount(studentName, className) {
+    return (data.absences || []).filter(r => r[0] === studentName && r[1] === className).length;
+  }
+
+  function renderFlow() {
     const content = document.getElementById("moduleContent");
     const controls = document.getElementById("moduleControls");
     const actions = document.getElementById("teacherModuleActions");
@@ -25,32 +30,37 @@
     controls?.classList.add("hidden");
     actions?.remove();
 
-    const students = selectedGradeClass ? studentsForClass(selectedGradeClass) : [];
+    const isGrades = activeFlow === "grades";
+    const students = selectedClass ? studentsForClass(selectedClass) : [];
+    const title = isGrades ? "Vlerësimi i nxënësve" : "Evidenca e mungesave";
+    const actionLabel = isGrades ? "Vlerëso nxënësin" : "Regjistro mungesë";
+    const countFn = isGrades ? gradeCount : absenceCount;
+
     content.innerHTML = `
       <div class="grade-flow">
-        <div class="grade-step ${selectedGradeClass ? "done" : "active"}">
+        <div class="grade-step ${selectedClass ? "done" : "active"}">
           <div class="grade-step-number">1</div>
           <div class="grade-step-body">
             <strong>Zgjidh klasën</strong>
-            <small>Klasa caktohet para se të shfaqen nxënësit për vlerësim.</small>
-            <select id="gradeClassSelect" class="grade-class-select">
+            <small>Klasa caktohet para se të shfaqen nxënësit.</small>
+            <select id="flowClassSelect" class="grade-class-select">
               <option value="">-- Zgjidh klasën --</option>
-              ${teacherClasses.map(c => `<option value="${escFlow(c)}" ${c === selectedGradeClass ? "selected" : ""}>${escFlow(c)}</option>`).join("")}
+              ${teacherClasses.map(c => `<option value="${escFlow(c)}" ${c === selectedClass ? "selected" : ""}>${escFlow(c)}</option>`).join("")}
             </select>
           </div>
         </div>
 
-        ${selectedGradeClass ? `
+        ${selectedClass ? `
           <div class="grade-step active">
             <div class="grade-step-number">2</div>
             <div class="grade-step-body">
-              <strong>Nxënësit e klasës ${escFlow(selectedGradeClass)}</strong>
-              <small>Zgjidh nxënësin dhe pastaj regjistro vlerësimin.</small>
+              <strong>${title}: ${escFlow(selectedClass)}</strong>
+              <small>Zgjidh nxënësin për të vazhduar.</small>
               <div class="grade-student-list">
                 ${students.map(s => `
                   <div class="grade-student-row">
-                    <div><strong>${escFlow(s[0])}</strong><small>${escFlow(s[1])} · ${gradeCount(s[0], s[1])} vlerësim(e)</small></div>
-                    <button class="primary-button grade-evaluate" data-student="${escFlow(s[0])}" data-class="${escFlow(s[1])}">Vlerëso nxënësin</button>
+                    <div><strong>${escFlow(s[0])}</strong><small>${escFlow(s[1])} · ${countFn(s[0], s[1])} ${isGrades ? "vlerësim(e)" : "mungesë(a)"}</small></div>
+                    <button class="primary-button flow-student-action" data-student="${escFlow(s[0])}" data-class="${escFlow(s[1])}">${actionLabel}</button>
                   </div>`).join("") || `<div class="empty-state">Nuk ka nxënës në këtë klasë.</div>`}
               </div>
             </div>
@@ -60,13 +70,15 @@
         `}
       </div>`;
 
-    document.getElementById("gradeClassSelect")?.addEventListener("change", e => {
-      selectedGradeClass = e.target.value;
-      renderGradeFlow();
+    document.getElementById("flowClassSelect")?.addEventListener("change", e => {
+      selectedClass = e.target.value;
+      renderFlow();
     });
 
-    document.querySelectorAll(".grade-evaluate").forEach(btn => {
-      btn.onclick = () => openGradeForm(btn.dataset.student, btn.dataset.class);
+    document.querySelectorAll(".flow-student-action").forEach(btn => {
+      btn.onclick = () => isGrades
+        ? openGradeForm(btn.dataset.student, btn.dataset.class)
+        : openAbsenceForm(btn.dataset.student, btn.dataset.class);
     });
   }
 
@@ -86,18 +98,38 @@
       ]);
       defs.grades[2] = data.teacherGrades;
       document.getElementById("teacherModal")?.remove();
-      renderGradeFlow();
+      renderFlow();
+    });
+  }
+
+  function openAbsenceForm(studentName, className) {
+    teacherModal("Regjistro mungesë", [
+      field("Nxënësi", "student", `<input name="student" value="${escFlow(studentName)}" readonly>`),
+      field("Klasa", "class", `<input name="class" value="${escFlow(className)}" readonly>`),
+      field("Data", "date", `<input name="date" type="date" value="2026-09-13" required>`),
+      field("Lënda", "subject", `<input name="subject" value="Matematikë" readonly>`),
+      field("Statusi", "status", selectHtml("status", ["E pajustifikuar", "E arsyetuar"])),
+      field("Arsyeja / shënimi", "note", `<textarea name="note" rows="3" placeholder="Shkruaj arsyen e mungesës"></textarea>`)
+    ].join(""), fd => {
+      const date = String(fd.get("date")).split("-").reverse().join(".");
+      data.absences.unshift([
+        fd.get("student"), fd.get("class"), date, "Matematikë", fd.get("status"), fd.get("note") || ""
+      ]);
+      defs.absences[2] = data.absences;
+      document.getElementById("teacherModal")?.remove();
+      renderFlow();
     });
   }
 
   module = function (k) {
-    if (k !== "grades" || !sessionStorage.getItem("eshkollaUser")) {
+    if ((k !== "grades" && k !== "absences") || !sessionStorage.getItem("eshkollaUser")) {
       baseModule(k);
       return;
     }
     baseModule(k);
-    selectedGradeClass = "";
-    renderGradeFlow();
+    activeFlow = k;
+    selectedClass = "";
+    renderFlow();
   };
 
   const style = document.createElement("style");

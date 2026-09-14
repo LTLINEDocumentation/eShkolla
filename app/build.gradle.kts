@@ -25,6 +25,10 @@ android {
         jvmTarget = "17"
     }
 
+    tasks.withType<JavaCompile>().configureEach {
+        options.release.set(17)
+    }
+
     buildFeatures {
         compose = true
     }

@@ -1,7 +1,9 @@
 package com.ltline.eshkolla
 
+import com.ltline.eshkolla.api.configureRoleApi
 import com.ltline.eshkolla.api.configureRouting
 import com.ltline.eshkolla.api.configureStatusPages
+import com.ltline.eshkolla.auth.AuthService
 import com.ltline.eshkolla.db.Database
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -24,4 +26,5 @@ fun Application.module() {
     }
     configureStatusPages()
     configureRouting()
+    configureRoleApi(AuthService())
 }

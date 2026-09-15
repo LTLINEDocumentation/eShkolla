@@ -11,6 +11,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 import java.sql.SQLException
+import java.sql.Types
 import java.util.UUID
 
 @Serializable data class SchoolDto(val id: String, val name: String, val address: String?, val active: Boolean)
@@ -58,11 +59,32 @@ fun Application.configureAdminSchoolApi(authService: AuthService) {
         post("/api/v1/management/classes") {
             if (!requireAdmin(call, authService)) return@post
             val req = call.receive<ClassCreateRequest>()
-            if (req.name.trim().isBlank() || req.gradeLevel !in 1..13) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Klasa dhe niveli 1-13 janë të detyrueshme.")); return@post }
-            if (req.schoolId != null && !exists("schools", req.schoolId)) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Shkolla nuk ekziston.")); return@post }
+            val name = req.name.trim()
+            val schoolId = req.schoolId?.trim()?.takeIf { it.isNotBlank() }
+            if (name.isBlank() || req.gradeLevel !in 1..13) {
+                call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Klasa dhe niveli 1-13 janë të detyrueshme."))
+                return@post
+            }
+            if (schoolId != null && !exists("schools", schoolId)) {
+                call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Shkolla nuk ekziston."))
+                return@post
+            }
             val id = "C-${UUID.randomUUID().toString().take(10).uppercase()}"
-            Database.connection().use { c -> c.prepareStatement("INSERT INTO classes(id,name,grade_level,school_id,active) VALUES (?,?,?,?,TRUE)").use { ps -> ps.setString(1,id); ps.setString(2,req.name.trim()); ps.setInt(3,req.gradeLevel); ps.setString(4,req.schoolId); ps.executeUpdate() } }
-            call.respond(HttpStatusCode.Created, mapOf("id" to id, "name" to req.name.trim(), "gradeLevel" to req.gradeLevel, "schoolId" to req.schoolId))
+            try {
+                Database.connection().use { c ->
+                    c.prepareStatement("ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id VARCHAR(64) REFERENCES schools(id)").use { it.executeUpdate() }
+                    c.prepareStatement("INSERT INTO classes(id,name,grade_level,school_id,active) VALUES (?,?,?,?,TRUE)").use { ps ->
+                        ps.setString(1, id)
+                        ps.setString(2, name)
+                        ps.setInt(3, req.gradeLevel)
+                        if (schoolId == null) ps.setNull(4, Types.VARCHAR) else ps.setString(4, schoolId)
+                        ps.executeUpdate()
+                    }
+                }
+                call.respond(HttpStatusCode.Created, mapOf("id" to id, "name" to name, "gradeLevel" to req.gradeLevel, "schoolId" to schoolId))
+            } catch (error: SQLException) {
+                call.respond(HttpStatusCode.Conflict, ApiError("CLASS_CREATE_FAILED", "Klasa nuk u ruajt. Kontrolloni emrin, nivelin dhe shkollën e zgjedhur."))
+            }
         }
         get("/api/v1/management/students") {
             if (!requireAdmin(call, authService)) return@get

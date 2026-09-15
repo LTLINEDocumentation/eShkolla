@@ -41,6 +41,15 @@ data class StudentRequest(
 )
 
 @Serializable
+data class SchoolClassDto(
+    val id: String,
+    val name: String,
+    val gradeLevel: Int,
+    val teacherId: String,
+    val studentCount: Int
+)
+
+@Serializable
 data class GradeDto(
     val id: String,
     val studentId: String,

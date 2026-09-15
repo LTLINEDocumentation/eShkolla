@@ -33,8 +33,8 @@ fun EShkollaApp() {
             DashboardScreen(user = user, onModuleClick = { module -> when (module) { "students" -> navController.navigate(Routes.STUDENTS); "classes" -> navController.navigate(Routes.CLASSES); "grades" -> navController.navigate(Routes.GRADES); "absences" -> navController.navigate(Routes.ABSENCES); "teachers" -> navController.navigate("management/teachers"); "users" -> navController.navigate("management/users") } })
         }
         composable(Routes.MANAGEMENT, arguments = listOf(navArgument("section") { type = NavType.StringType })) { backStack ->
-            val user = (authViewModel.state.value as? AuthState.LoggedIn)?.user ?: UserRole.NXENES
-            ManagementScreen(role = user.role, section = backStack.arguments?.getString("section").orEmpty(), onBack = { navController.popBackStack() })
+            val role = (authViewModel.state.value as? AuthState.LoggedIn)?.user?.role ?: UserRole.NXENES
+            ManagementScreen(role = role, section = backStack.arguments?.getString("section").orEmpty(), onBack = { navController.popBackStack() })
         }
         composable(Routes.STUDENTS) { val vm: StudentViewModel = viewModel(); StudentScreen(viewModel = vm, onBack = { navController.popBackStack() }) }
         composable(Routes.CLASSES) { TeacherClassesScreen(onBack = { navController.popBackStack() }, onGrades = { id -> navController.navigate("grades/$id") }, onAbsences = { id -> navController.navigate("absences/$id") }) }

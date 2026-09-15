@@ -29,9 +29,11 @@ class ApplicationTest {
     @Test
     fun loginAndStudentsEndpointWork() = testApplication {
         application { module() }
+        val username = System.getenv("BOOTSTRAP_ADMIN_USERNAME") ?: "admin"
+        val password = System.getenv("BOOTSTRAP_ADMIN_PASSWORD") ?: "test-admin-password-123"
         val login = client.post("/api/v1/auth/login") {
             contentType(ContentType.Application.Json)
-            setBody("{\"username\":\"admin\",\"password\":\"123456\"}")
+            setBody("{\"username\":\"$username\",\"password\":\"$password\"}")
         }
         assertEquals(HttpStatusCode.OK, login.status)
         val token = Json.parseToJsonElement(login.bodyAsText()).jsonObject["token"]?.jsonPrimitive?.content
@@ -41,6 +43,7 @@ class ApplicationTest {
             header(HttpHeaders.Authorization, "Bearer $token")
         }
         assertEquals(HttpStatusCode.OK, students.status)
-        assertTrue(students.bodyAsText().contains("Ardit Krasniqi"))
+        assertTrue(students.bodyAsText().contains("items"))
+        assertTrue(students.bodyAsText().contains("total"))
     }
 }

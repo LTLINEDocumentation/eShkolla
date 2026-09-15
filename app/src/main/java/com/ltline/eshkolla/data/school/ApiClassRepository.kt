@@ -23,7 +23,7 @@ class ApiClassRepository {
     suspend fun getStudents(classId: String): List<Student> = parseStudents(request("/api/v1/classes/$classId/students"))
 
     private fun request(path: String): String {
-        val connection = (URL(ApiConfig.BASE_URL.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        val connection = (URL(ApiConfig.baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = 15_000

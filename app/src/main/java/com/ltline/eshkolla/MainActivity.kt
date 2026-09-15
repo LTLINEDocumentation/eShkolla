@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.ltline.eshkolla.app.RealEShkollaApp
+import com.ltline.eshkolla.app.EShkollaApp
 import com.ltline.eshkolla.ui.theme.EShkollaTheme
 
 class MainActivity : ComponentActivity() {
@@ -15,7 +15,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             EShkollaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    RealEShkollaApp()
+                    EShkollaApp()
                 }
             }
         }

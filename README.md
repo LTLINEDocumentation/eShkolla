@@ -2,32 +2,13 @@
 
 Platformë digjitale për menaxhimin dhe organizimin e proceseve shkollore.
 
-## Gjendja aktuale
+## Arkitektura
 
-Projekti ka një Web demo të publikuar në GitHub Pages dhe një aplikacion Android me Kotlin + Jetpack Compose. Autentikimi aktual është demo; API dhe baza reale do të ndërtohen në fazën pasuese.
-
-## Struktura
-
-```text
-.
-├── app/                         # Android / Kotlin / Compose
-│   └── src/main/java/com/ltline/eshkolla/
-│       ├── app/
-│       ├── data/
-│       ├── domain/
-│       ├── features/
-│       └── ui/
-├── web/                         # Web demo për testim të vazhdueshëm
-│   ├── index.html
-│   ├── app.js
-│   └── styles.css
-├── docs/
-│   ├── api/
-│   ├── architecture/
-│   ├── database/
-│   └── requirements/
-└── README.md
-```
+- **Android:** Kotlin + Jetpack Compose
+- **Backend:** Kotlin + Ktor 3.0.2
+- **Database:** PostgreSQL + HikariCP
+- **Web:** GitHub Pages/demo dhe shtresë për integrim me API
+- **CI:** GitHub Actions për Android dhe Backend
 
 ## Rolet
 
@@ -37,11 +18,36 @@ Projekti ka një Web demo të publikuar në GitHub Pages dhe një aplikacion And
 - Nxënës
 - Prind
 
-## Parimi i zhvillimit
+## Funksionet e implementuara
 
-Çdo funksion i ri zhvillohet dhe kontrollohet fillimisht në Web, pastaj integrohet në Android dhe më vonë lidhet me API-në dhe bazën reale.
+- Autentikim server-side me PBKDF2 dhe session token
+- Dashboard sipas rolit
+- Menaxhim mësimdhënësish, klasash dhe nxënësish
+- Caktim mësimdhënës ↔ klasë
+- Nota: krijim, lexim, ndryshim dhe fshirje
+- Mungesa: krijim, lexim, ndryshim dhe fshirje
+- Orari: model, PostgreSQL dhe API CRUD
+- Njoftimet: PostgreSQL dhe API
+- Raportet akademike: mesatare, nota dhe mungesa
+- Lidhje nxënësi dhe prindi me profilet përkatëse
 
-`Domain → Data demo → Web test → Android → API → Database → Testim`
+## Endpoint-et kryesore
+
+- `/api/v1/auth/*`
+- `/api/v1/me/*`
+- `/api/v1/dashboard`
+- `/api/v1/management/*`
+- `/api/v1/grades`
+- `/api/v1/absences`
+- `/api/v1/schedule`
+- `/api/v1/notifications`
+- `/api/v1/reports/academic`
+
+Dokumentimi: `docs/API.md`, `docs/USER_GUIDE.md`, `docs/RELEASE_CHECKLIST.md`.
+
+## CI / Release
+
+GitHub Actions ndërton Android debug APK dhe backend-in. Para prodhimit duhet të konfigurohen HTTPS, secrets, PostgreSQL production, backup/restore dhe Android release signing.
 
 ## Web
 
@@ -49,4 +55,4 @@ Demo: https://ltlinedocumentation.github.io/eShkolla/
 
 ## Siguria
 
-Kredencialet e demo-s janë vetëm për zhvillim. Para përdorimit real duhet autentikim server-side, ruajtje e sigurt e fjalëkalimeve, token-e, autorizim sipas rolit, auditim dhe validim në backend.
+Kredencialet demo janë vetëm për zhvillim. Backend-i kontrollon autentikimin, rolet dhe validimin. Para përdorimit real duhet të ndryshohen kredencialet demo dhe të vendosen HTTPS, secrets jashtë repository-t, rate limiting dhe auditim.

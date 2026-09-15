@@ -3,11 +3,11 @@ package com.ltline.eshkolla.auth
 import com.ltline.eshkolla.api.UserDto
 import com.ltline.eshkolla.db.Database
 import java.security.MessageDigest
-import java.security.spec.PBEKeySpec
 import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
 class AuthService {
     private data class Account(val id: String, val username: String, val fullName: String, val role: String)

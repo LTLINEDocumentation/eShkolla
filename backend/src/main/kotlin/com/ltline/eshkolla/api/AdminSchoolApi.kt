@@ -27,7 +27,7 @@ import java.util.UUID
 fun Application.configureAdminSchoolApi(authService: AuthService) {
     routing {
         get("/api/v1/management/schools") {
-            if (!requireAdmin(call, authService)) return@get
+            if (!requireAdminOrDirector(call, authService)) return@get
             val rows = Database.connection().use { c -> c.prepareStatement("SELECT id,name,address,active FROM schools ORDER BY name").use { ps -> ps.executeQuery().use { rs -> buildList { while (rs.next()) add(SchoolDto(rs.getString(1), rs.getString(2), rs.getString(3), rs.getBoolean(4))) } } } }
             call.respond(rows)
         }
@@ -42,7 +42,7 @@ fun Application.configureAdminSchoolApi(authService: AuthService) {
             } catch (_: SQLException) { call.respond(HttpStatusCode.Conflict, ApiError("ALREADY_EXISTS", "Kjo shkollë ekziston.")) }
         }
         get("/api/v1/management/subjects") {
-            if (!requireAdmin(call, authService)) return@get
+            if (!requireAdminOrDirector(call, authService)) return@get
             val rows = Database.connection().use { c -> c.prepareStatement("SELECT id,name,code,active FROM subjects ORDER BY name").use { ps -> ps.executeQuery().use { rs -> buildList { while (rs.next()) add(SubjectDto(rs.getString(1), rs.getString(2), rs.getString(3), rs.getBoolean(4))) } } } }
             call.respond(rows)
         }
@@ -61,33 +61,19 @@ fun Application.configureAdminSchoolApi(authService: AuthService) {
             val req = call.receive<ClassCreateRequest>()
             val name = req.name.trim()
             val schoolId = req.schoolId?.trim()?.takeIf { it.isNotBlank() }
-            if (name.isBlank() || req.gradeLevel !in 1..13) {
-                call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Klasa dhe niveli 1-13 janë të detyrueshme."))
-                return@post
-            }
-            if (schoolId != null && !exists("schools", schoolId)) {
-                call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Shkolla nuk ekziston."))
-                return@post
-            }
+            if (name.isBlank() || req.gradeLevel !in 1..13) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Klasa dhe niveli 1-13 janë të detyrueshme.")); return@post }
+            if (schoolId != null && !exists("schools", schoolId)) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Shkolla nuk ekziston.")); return@post }
             val id = "C-${UUID.randomUUID().toString().take(10).uppercase()}"
             try {
                 Database.connection().use { c ->
                     c.prepareStatement("ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id VARCHAR(64) REFERENCES schools(id)").use { it.executeUpdate() }
-                    c.prepareStatement("INSERT INTO classes(id,name,grade_level,school_id,active) VALUES (?,?,?,?,TRUE)").use { ps ->
-                        ps.setString(1, id)
-                        ps.setString(2, name)
-                        ps.setInt(3, req.gradeLevel)
-                        if (schoolId == null) ps.setNull(4, Types.VARCHAR) else ps.setString(4, schoolId)
-                        ps.executeUpdate()
-                    }
+                    c.prepareStatement("INSERT INTO classes(id,name,grade_level,school_id,active) VALUES (?,?,?,?,TRUE)").use { ps -> ps.setString(1,id); ps.setString(2,name); ps.setInt(3,req.gradeLevel); if (schoolId == null) ps.setNull(4,Types.VARCHAR) else ps.setString(4,schoolId); ps.executeUpdate() }
                 }
                 call.respond(HttpStatusCode.Created, mapOf("id" to id, "name" to name, "gradeLevel" to req.gradeLevel, "schoolId" to schoolId))
-            } catch (error: SQLException) {
-                call.respond(HttpStatusCode.Conflict, ApiError("CLASS_CREATE_FAILED", "Klasa nuk u ruajt. Kontrolloni emrin, nivelin dhe shkollën e zgjedhur."))
-            }
+            } catch (_: SQLException) { call.respond(HttpStatusCode.Conflict, ApiError("CLASS_CREATE_FAILED", "Klasa nuk u ruajt. Kontrolloni emrin, nivelin dhe shkollën e zgjedhur.")) }
         }
         get("/api/v1/management/students") {
-            if (!requireAdmin(call, authService)) return@get
+            if (!requireAdminOrDirector(call, authService)) return@get
             val rows = Database.connection().use { c -> c.prepareStatement("SELECT s.id,s.full_name,s.class_id,c.name,s.birth_date,s.active FROM students s JOIN classes c ON c.id=s.class_id ORDER BY c.grade_level,c.name,s.full_name").use { ps -> ps.executeQuery().use { rs -> buildList { while (rs.next()) add(StudentManagementDto(rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(4),rs.getString(5),rs.getBoolean(6))) } } } }
             call.respond(rows)
         }
@@ -101,7 +87,7 @@ fun Application.configureAdminSchoolApi(authService: AuthService) {
             call.respond(HttpStatusCode.Created, mapOf("id" to id, "fullName" to req.fullName.trim(), "classId" to req.classId, "birthDate" to req.birthDate.trim()))
         }
         get("/api/v1/management/teacher-subject-assignments") {
-            if (!requireAdmin(call, authService)) return@get
+            if (!requireAdminOrDirector(call, authService)) return@get
             val rows = Database.connection().use { c -> c.prepareStatement("SELECT ts.teacher_id,t.full_name,ts.subject_id,s.name,ts.class_id,c.name FROM teacher_subjects ts JOIN teachers t ON t.id=ts.teacher_id JOIN subjects s ON s.id=ts.subject_id JOIN classes c ON c.id=ts.class_id ORDER BY t.full_name,s.name,c.name").use { ps -> ps.executeQuery().use { rs -> buildList { while (rs.next()) add(TeacherSubjectAssignmentDto(rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(4),rs.getString(5),rs.getString(6))) } } } }
             call.respond(rows)
         }
@@ -123,6 +109,14 @@ private suspend fun requireAdmin(call: io.ktor.server.application.ApplicationCal
     val user = token?.let(auth::userFor)
     if (user == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return false }
     if (user.role != "ADMINISTRATOR") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm administratori ka këtë qasje.")); return false }
+    return true
+}
+
+private suspend fun requireAdminOrDirector(call: io.ktor.server.application.ApplicationCall, auth: AuthService): Boolean {
+    val token = call.request.headers["Authorization"]?.removePrefix("Bearer ")?.takeIf { it.isNotBlank() }
+    val user = token?.let(auth::userFor)
+    if (user == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return false }
+    if (user.role !in setOf("ADMINISTRATOR","DREJTOR")) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni këtë qasje.")); return false }
     return true
 }
 

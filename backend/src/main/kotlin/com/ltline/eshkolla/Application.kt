@@ -9,6 +9,7 @@ import com.ltline.eshkolla.api.configureRouting
 import com.ltline.eshkolla.api.configureSchoolOperationsApi
 import com.ltline.eshkolla.api.configureStatusPages
 import com.ltline.eshkolla.auth.AuthService
+import com.ltline.eshkolla.db.ClassUniquenessMigration
 import com.ltline.eshkolla.db.Database
 import com.ltline.eshkolla.db.SchoolOperationsMigration
 import io.ktor.server.application.Application
@@ -32,6 +33,7 @@ fun main() {
 fun Application.module() {
     Database.initialize()
     Database.connection().use(SchoolOperationsMigration::run)
+    Database.connection().use(ClassUniquenessMigration::run)
     install(CallLogging)
     install(ContentNegotiation) {
         json(Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true })

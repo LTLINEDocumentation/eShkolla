@@ -123,6 +123,26 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             val grade = GradeDto("G-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
             call.respond(HttpStatusCode.Created, gradeRepository.save(grade))
         }
+        put("/grades/{id}") {
+            val user = requireWriteUser() ?: return@put
+            val id = call.parameters["id"].orEmpty()
+            val existing = gradeRepository.findById(id)
+            if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet.")); return@put }
+            val request = call.receive<GradeRequest>(); validateGrade(request)?.let { call.respond(HttpStatusCode.BadRequest, it); return@put }
+            val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else request.teacherId
+            if (teacherId == null || (user.role == "MESIMDHENES" && existing.teacherId != teacherId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni këtë notë.")); return@put }
+            val student = studentRepository.findById(request.studentId)
+            if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@put }
+            if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni notë për këtë nxënës.")); return@put }
+            call.respond(gradeRepository.save(GradeDto(id, request.studentId, request.subjectId, teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })))
+        }
+        delete("/grades/{id}") {
+            val user = requireWriteUser() ?: return@delete
+            val id = call.parameters["id"].orEmpty(); val existing = gradeRepository.findById(id)
+            if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet.")); return@delete }
+            if (user.role == "MESIMDHENES" && existing.teacherId != authService.teacherIdFor(bearerToken().orEmpty())) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të fshini këtë notë.")); return@delete }
+            if (gradeRepository.delete(id)) call.respond(HttpStatusCode.NoContent) else call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet."))
+        }
         get("/absences") {
             val user = requireUser() ?: return@get
             val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else call.request.queryParameters["teacherId"]?.trim()
@@ -143,6 +163,25 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të regjistroni mungesë për këtë nxënës.")); return@post }
             val absence = AbsenceDto("A-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
             call.respond(HttpStatusCode.Created, absenceRepository.save(absence))
+        }
+        put("/absences/{id}") {
+            val user = requireWriteUser() ?: return@put
+            val id = call.parameters["id"].orEmpty(); val existing = absenceRepository.findById(id)
+            if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Mungesa nuk u gjet.")); return@put }
+            val request = call.receive<AbsenceRequest>(); validateAbsence(request)?.let { call.respond(HttpStatusCode.BadRequest, it); return@put }
+            val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else request.teacherId
+            if (teacherId == null || (user.role == "MESIMDHENES" && existing.teacherId != teacherId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni këtë mungesë.")); return@put }
+            val student = studentRepository.findById(request.studentId)
+            if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@put }
+            if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni mungesë për këtë nxënës.")); return@put }
+            call.respond(absenceRepository.save(AbsenceDto(id, request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })))
+        }
+        delete("/absences/{id}") {
+            val user = requireWriteUser() ?: return@delete
+            val id = call.parameters["id"].orEmpty(); val existing = absenceRepository.findById(id)
+            if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Mungesa nuk u gjet.")); return@delete }
+            if (user.role == "MESIMDHENES" && existing.teacherId != authService.teacherIdFor(bearerToken().orEmpty())) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të fshini këtë mungesë.")); return@delete }
+            if (absenceRepository.delete(id)) call.respond(HttpStatusCode.NoContent) else call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Mungesa nuk u gjet."))
         }
     }
 }

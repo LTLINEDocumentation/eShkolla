@@ -27,11 +27,7 @@ import com.ltline.eshkolla.data.school.TeacherClass
 import com.ltline.eshkolla.domain.model.Student
 
 @Composable
-fun TeacherClassesScreen(
-    onBack: () -> Unit,
-    onGrades: () -> Unit,
-    onAbsences: () -> Unit
-) {
+fun TeacherClassesScreen(onBack: () -> Unit, onGrades: (String) -> Unit, onAbsences: (String) -> Unit) {
     val repository = remember { ApiClassRepository() }
     var classes by remember { mutableStateOf<List<TeacherClass>>(emptyList()) }
     var selectedClass by remember { mutableStateOf<TeacherClass?>(null) }
@@ -40,39 +36,27 @@ fun TeacherClassesScreen(
     var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        runCatching { repository.getMyClasses() }
-            .onSuccess { classes = it }
-            .onFailure { error = it.message ?: "Gabim gjatë ngarkimit të klasave." }
+        runCatching { repository.getMyClasses() }.onSuccess { classes = it }.onFailure { error = it.message ?: "Gabim gjatë ngarkimit të klasave." }
         loading = false
     }
-
     LaunchedEffect(selectedClass?.id) {
         val classId = selectedClass?.id ?: return@LaunchedEffect
         loading = true
-        runCatching { repository.getStudents(classId) }
-            .onSuccess { students = it }
-            .onFailure { error = it.message ?: "Gabim gjatë ngarkimit të nxënësve." }
+        runCatching { repository.getStudents(classId) }.onSuccess { students = it }.onFailure { error = it.message ?: "Gabim gjatë ngarkimit të nxënësve." }
         loading = false
     }
 
-    Column(
-        Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedButton(onClick = onBack) { Text("← Paneli") }
         Text("Klasat e mia", style = MaterialTheme.typography.headlineMedium)
         Text("Mësimdhënës: Leonard Tahiraj • Matematikë")
-
         if (selectedClass == null) {
             Text("Zgjidhni klasën", style = MaterialTheme.typography.titleMedium)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                 items(classes) { schoolClass ->
                     Card(Modifier.fillMaxWidth().clickable { selectedClass = schoolClass; error = null }) {
                         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text(schoolClass.name, style = MaterialTheme.typography.titleLarge)
-                                Text("Niveli: ${schoolClass.gradeLevel}")
-                            }
+                            Column { Text(schoolClass.name, style = MaterialTheme.typography.titleLarge); Text("Niveli: ${schoolClass.gradeLevel}") }
                             Text("${schoolClass.studentCount} nxënës")
                         }
                     }
@@ -83,27 +67,20 @@ fun TeacherClassesScreen(
             Text("Nxënësit e klasës", style = MaterialTheme.typography.titleMedium)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                 items(students) { student ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(student.fullName, style = MaterialTheme.typography.titleMedium)
-                            Text("ID: ${student.id}")
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = onGrades) { Text("Notë") }
-                                OutlinedButton(onClick = onAbsences) { Text("Mungesë") }
-                            }
+                    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(student.fullName, style = MaterialTheme.typography.titleMedium)
+                        Text("ID: ${student.id}")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onGrades(student.id) }) { Text("Notë") }
+                            OutlinedButton(onClick = { onAbsences(student.id) }) { Text("Mungesë") }
                         }
-                    }
+                    } }
                 }
             }
-            OutlinedButton(onClick = { selectedClass = null; students = emptyList() }, Modifier.fillMaxWidth()) {
-                Text("← Kthehu te klasat")
-            }
+            OutlinedButton(onClick = { selectedClass = null; students = emptyList() }, Modifier.fillMaxWidth()) { Text("← Kthehu te klasat") }
         }
-
         if (loading) Text("Duke ngarkuar…")
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (!loading && error == null && classes.isEmpty() && selectedClass == null) {
-            Text("Nuk ka klasa të caktuara për këtë mësimdhënës.")
-        }
+        if (!loading && error == null && classes.isEmpty() && selectedClass == null) Text("Nuk ka klasa të caktuara për këtë mësimdhënës.")
     }
 }

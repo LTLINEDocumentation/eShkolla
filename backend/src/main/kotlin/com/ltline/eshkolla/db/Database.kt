@@ -1,15 +1,12 @@
 package com.ltline.eshkolla.db
 
+import com.ltline.eshkolla.auth.PasswordHasher
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.security.SecureRandom
 import java.sql.Connection
-import java.util.Base64
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.PBEKeySpec
 
 object Database {
     private val dataSource: HikariDataSource by lazy {
@@ -60,7 +57,7 @@ object Database {
         val password = System.getenv("BOOTSTRAP_ADMIN_PASSWORD").orEmpty()
         if (username.isBlank() || password.length < 10) return
         val fullName = System.getenv("BOOTSTRAP_ADMIN_NAME")?.trim().takeUnless { it.isNullOrBlank() } ?: "Administrator eShkolla"
-        val hash = PasswordHash.create(password)
+        val hash = PasswordHasher.create(password)
         connection.prepareStatement(
             "INSERT INTO users(id,username,full_name,role,password_hash,active) VALUES (?,?,?,?,?,TRUE) " +
                 "ON CONFLICT (username) DO UPDATE SET full_name=EXCLUDED.full_name, role='ADMINISTRATOR', active=TRUE"
@@ -92,18 +89,4 @@ object Database {
     }
 
     private fun String.decodeUrlComponent(): String = URLDecoder.decode(replace("+", "%2B"), StandardCharsets.UTF_8)
-
-    private object PasswordHash {
-        private const val ITERATIONS = 120_000
-        private const val KEY_BITS = 256
-        private const val SALT_BYTES = 16
-
-        fun create(password: String): String {
-            val salt = ByteArray(SALT_BYTES).also { SecureRandom().nextBytes(it) }
-            val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_BITS)
-            val hash = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
-            spec.clearPassword()
-            return listOf(ITERATIONS, KEY_BITS, Base64.getEncoder().encodeToString(salt), Base64.getEncoder().encodeToString(hash)).joinToString(".")
-        }
-    }
 }

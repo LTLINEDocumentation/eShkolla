@@ -21,8 +21,10 @@ internal suspend fun RoutingContext.requireUser(): UserDto? {
 
 internal suspend fun RoutingContext.requireWriteUser(): UserDto? {
     val user = requireUser() ?: return null
-    if (user.role !in setOf("ADMINISTRATOR", "DREJTOR", "MESIMDHENES")) {
-        call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni të drejtë për këtë veprim."))
+    // Drejtori nuk shkruan drejtpërdrejt nota/mungesa në endpointet operative.
+    // Veprimi i Drejtorit për këto të dhëna kalon përmes rrjedhës së njoftimit te Mësimdhënësi.
+    if (user.role !in setOf("ADMINISTRATOR", "MESIMDHENES")) {
+        call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Ky veprim nuk kryhet drejtpërdrejt nga ky rol."))
         return null
     }
     return user

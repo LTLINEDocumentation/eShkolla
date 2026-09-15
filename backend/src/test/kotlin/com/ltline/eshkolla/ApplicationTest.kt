@@ -13,6 +13,9 @@ import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class ApplicationTest {
     @Test
@@ -31,7 +34,8 @@ class ApplicationTest {
             setBody("{\"username\":\"admin\",\"password\":\"123456\"}")
         }
         assertEquals(HttpStatusCode.OK, login.status)
-        val token = Regex("\\\"token\\\":\\\"([^\\\"]+)").find(login.bodyAsText())!!.groupValues[1]
+        val token = Json.parseToJsonElement(login.bodyAsText()).jsonObject["token"]?.jsonPrimitive?.content
+        require(!token.isNullOrBlank()) { "Login nuk ktheu token." }
 
         val students = client.get("/api/v1/students") {
             header(HttpHeaders.Authorization, "Bearer $token")

@@ -28,6 +28,8 @@ object Database {
                 statement.executeUpdate("CREATE TABLE IF NOT EXISTS classes (id VARCHAR(64) PRIMARY KEY, name VARCHAR(120) NOT NULL, grade_level INT NOT NULL, active BOOLEAN NOT NULL DEFAULT TRUE)")
                 statement.executeUpdate("CREATE TABLE IF NOT EXISTS students (id VARCHAR(64) PRIMARY KEY, full_name VARCHAR(200) NOT NULL, class_id VARCHAR(64) NOT NULL REFERENCES classes(id), birth_date VARCHAR(20) NOT NULL, active BOOLEAN NOT NULL DEFAULT TRUE)")
                 statement.executeUpdate("CREATE TABLE IF NOT EXISTS teacher_classes (teacher_id VARCHAR(64) NOT NULL REFERENCES teachers(id), class_id VARCHAR(64) NOT NULL REFERENCES classes(id), PRIMARY KEY (teacher_id, class_id))")
+                statement.executeUpdate("CREATE TABLE IF NOT EXISTS student_users (user_id VARCHAR(64) PRIMARY KEY REFERENCES users(id), student_id VARCHAR(64) UNIQUE NOT NULL REFERENCES students(id))")
+                statement.executeUpdate("CREATE TABLE IF NOT EXISTS parent_students (user_id VARCHAR(64) NOT NULL REFERENCES users(id), student_id VARCHAR(64) NOT NULL REFERENCES students(id), PRIMARY KEY (user_id, student_id))")
                 statement.executeUpdate("CREATE TABLE IF NOT EXISTS grades (id VARCHAR(64) PRIMARY KEY, student_id VARCHAR(64) NOT NULL REFERENCES students(id), subject_id VARCHAR(64) NOT NULL, teacher_id VARCHAR(64) NOT NULL REFERENCES teachers(id), value INT NOT NULL CHECK (value BETWEEN 1 AND 5), period VARCHAR(80) NOT NULL, academic_year VARCHAR(20) NOT NULL, note TEXT)")
                 statement.executeUpdate("CREATE TABLE IF NOT EXISTS absences (id VARCHAR(64) PRIMARY KEY, student_id VARCHAR(64) NOT NULL REFERENCES students(id), subject_id VARCHAR(64) NOT NULL, teacher_id VARCHAR(64) NOT NULL REFERENCES teachers(id), date VARCHAR(20) NOT NULL, status VARCHAR(40) NOT NULL, note TEXT)")
                 statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id)")
@@ -68,6 +70,12 @@ object Database {
                 ps.setString(1, row[0]); ps.setString(2, row[1]); ps.setString(3, row[2]); ps.setString(4, row[3]); ps.setBoolean(5, true); ps.addBatch()
             }
             ps.executeBatch()
+        }
+        connection.prepareStatement("INSERT INTO student_users(user_id,student_id) VALUES (?,?) ON CONFLICT DO NOTHING").use { ps ->
+            ps.setString(1, "4"); ps.setString(2, "NX001"); ps.executeUpdate()
+        }
+        connection.prepareStatement("INSERT INTO parent_students(user_id,student_id) VALUES (?,?) ON CONFLICT DO NOTHING").use { ps ->
+            ps.setString(1, "5"); ps.setString(2, "NX001"); ps.executeUpdate()
         }
     }
 }

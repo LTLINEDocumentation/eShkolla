@@ -18,7 +18,7 @@ class ApiManagementRepository {
     suspend fun getUsers(): List<ManagementUser> = parseUsers(JSONArray(request("/api/v1/management/users")))
 
     private fun request(path: String): String {
-        val connection = (URL(ApiConfig.BASE_URL.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        val connection = (URL(ApiConfig.baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"; connectTimeout = 10_000; readTimeout = 15_000
             setRequestProperty("Accept", "application/json")
             ApiSession.token?.let { setRequestProperty("Authorization", "Bearer $it") }

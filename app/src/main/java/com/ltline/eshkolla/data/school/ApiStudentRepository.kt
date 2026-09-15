@@ -25,7 +25,7 @@ class ApiStudentRepository : StudentRepository {
     }
     private fun body(student: Student) = JSONObject().put("fullName", student.fullName).put("classId", student.classId).put("birthDate", student.birthDate.orEmpty()).put("isActive", student.isActive)
     private fun request(path: String, method: String, body: JSONObject? = null): String {
-        val connection = (URL(ApiConfig.BASE_URL.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+        val connection = (URL(ApiConfig.baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method; connectTimeout = 10_000; readTimeout = 15_000; doInput = true; doOutput = body != null
             setRequestProperty("Accept", "application/json"); setRequestProperty("Content-Type", "application/json")
             ApiSession.token?.let { setRequestProperty("Authorization", "Bearer $it") }

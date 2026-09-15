@@ -10,8 +10,7 @@ paths:
     get:
       summary: Health check
       responses:
-        '200':
-          description: API is healthy
+        '200': { description: API is healthy }
   /api/v1/auth/login:
     post:
       summary: Kyç përdoruesin
@@ -19,104 +18,118 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
+            schema: { $ref: '#/components/schemas/LoginRequest' }
       responses:
-        '200':
-          description: Kyçja u krye
-        '400':
-          description: Input i pavlefshëm
-        '401':
-          description: Kredenciale të pasakta
+        '200': { description: Kyçja u krye }
+        '400': { description: Input i pavlefshëm }
+        '401': { description: Kredenciale të pasakta }
   /api/v1/auth/logout:
     post:
       summary: Mbyll sesionin
-      security:
-        - bearerAuth: []
+      security: [{ bearerAuth: [] }]
       responses:
-        '204':
-          description: Sesioni u mbyll
+        '204': { description: Sesioni u mbyll }
   /api/v1/auth/me:
     get:
       summary: Merr përdoruesin aktual
-      security:
-        - bearerAuth: []
+      security: [{ bearerAuth: [] }]
       responses:
-        '200':
-          description: Përdoruesi aktual
-        '401':
-          description: Pa autentikim
+        '200': { description: Përdoruesi aktual }
+        '401': { description: Pa autentikim }
   /api/v1/students:
     get:
       summary: Lista e nxënësve
-      security:
-        - bearerAuth: []
+      security: [{ bearerAuth: [] }]
       parameters:
-        - in: query
-          name: search
-          schema: { type: string }
-        - in: query
-          name: active
-          schema: { type: boolean }
-        - in: query
-          name: page
-          schema: { type: integer, minimum: 1, default: 1 }
-        - in: query
-          name: pageSize
-          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: active, schema: { type: boolean } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+        - { in: query, name: pageSize, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
-        '200':
-          description: Lista e paginuar
+        '200': { description: Lista e paginuar }
     post:
       summary: Shto nxënës
-      security:
-        - bearerAuth: []
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/StudentRequest'
+            schema: { $ref: '#/components/schemas/StudentRequest' }
       responses:
-        '201':
-          description: Nxënësi u krijua
-        '400':
-          description: Input i pavlefshëm
+        '201': { description: Nxënësi u krijua }
+        '400': { description: Input i pavlefshëm }
   /api/v1/students/{id}:
     get:
       summary: Merr nxënësin
-      security:
-        - bearerAuth: []
-      parameters:
-        - { in: path, name: id, required: true, schema: { type: string } }
+      security: [{ bearerAuth: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
       responses:
         '200': { description: Nxënësi }
         '404': { description: Nuk u gjet }
     put:
       summary: Ndrysho nxënësin
-      security:
-        - bearerAuth: []
-      parameters:
-        - { in: path, name: id, required: true, schema: { type: string } }
+      security: [{ bearerAuth: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/StudentRequest'
+            schema: { $ref: '#/components/schemas/StudentRequest' }
       responses:
         '200': { description: Nxënësi u përditësua }
         '400': { description: Input i pavlefshëm }
         '404': { description: Nuk u gjet }
     delete:
       summary: Çaktivizo nxënësin
-      security:
-        - bearerAuth: []
-      parameters:
-        - { in: path, name: id, required: true, schema: { type: string } }
+      security: [{ bearerAuth: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
       responses:
         '204': { description: U çaktivizua }
         '404': { description: Nuk u gjet }
+  /api/v1/grades:
+    get:
+      summary: Merr notat sipas nxënësit, klasës ose mësimdhënësit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: classId, schema: { type: string } }
+        - { in: query, name: studentId, schema: { type: string } }
+        - { in: query, name: teacherId, schema: { type: string } }
+      responses:
+        '200': { description: Lista e notave }
+        '401': { description: Pa autentikim }
+    post:
+      summary: Regjistro notë
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GradeRequest' }
+      responses:
+        '201': { description: Nota u regjistrua }
+        '400': { description: Input i pavlefshëm }
+        '403': { description: Veprimi nuk lejohet }
+  /api/v1/absences:
+    get:
+      summary: Merr mungesat
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: studentId, schema: { type: string } }
+        - { in: query, name: teacherId, schema: { type: string } }
+      responses:
+        '200': { description: Lista e mungesave }
+    post:
+      summary: Regjistro mungesë
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AbsenceRequest' }
+      responses:
+        '201': { description: Mungesa u regjistrua }
+        '400': { description: Input i pavlefshëm }
+        '403': { description: Veprimi nuk lejohet }
 components:
   securitySchemes:
     bearerAuth:
@@ -136,6 +149,27 @@ components:
         fullName: { type: string }
         classId: { type: string }
         birthDate: { type: string }
+    GradeRequest:
+      type: object
+      required: [studentId, subjectId, teacherId, value, period, academicYear]
+      properties:
+        studentId: { type: string }
+        subjectId: { type: string }
+        teacherId: { type: string }
+        value: { type: integer, minimum: 1, maximum: 5 }
+        period: { type: string }
+        academicYear: { type: string }
+        note: { type: string, nullable: true }
+    AbsenceRequest:
+      type: object
+      required: [studentId, subjectId, teacherId, date, status]
+      properties:
+        studentId: { type: string }
+        subjectId: { type: string }
+        teacherId: { type: string }
+        date: { type: string }
+        status: { type: string, enum: [E_PAAFTESUAR, E_ARSYESHME] }
+        note: { type: string, nullable: true }
     User:
       type: object
       properties:

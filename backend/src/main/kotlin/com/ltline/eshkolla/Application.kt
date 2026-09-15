@@ -2,6 +2,7 @@ package com.ltline.eshkolla
 
 import com.ltline.eshkolla.api.configureAdminSchoolApi
 import com.ltline.eshkolla.api.configureAdminAssignmentApi
+import com.ltline.eshkolla.api.configureAdminCrudApi
 import com.ltline.eshkolla.api.configureClassManagementApi
 import com.ltline.eshkolla.api.configureManagementApi
 import com.ltline.eshkolla.api.configureRoleApi
@@ -26,29 +27,23 @@ import io.ktor.server.routing.routing
 import java.io.File
 import kotlinx.serialization.json.Json
 
-fun main() {
-    embeddedServer(factory = Netty, port = System.getenv("PORT")?.toIntOrNull() ?: 8080, host = System.getenv("HOST") ?: "0.0.0.0", module = Application::module).start(wait = true)
-}
+fun main() { embeddedServer(factory=Netty,port=System.getenv("PORT")?.toIntOrNull()?:8080,host=System.getenv("HOST")?:"0.0.0.0",module=Application::module).start(wait=true) }
 
-fun Application.module() {
-    Database.initialize()
-    Database.connection().use(SchoolOperationsMigration::run)
-    Database.connection().use(ClassUniquenessMigration::run)
-    install(CallLogging)
-    install(ContentNegotiation) {
-        json(Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true })
-    }
-    configureStatusPages()
-    configureRouting()
-    val authService = AuthService()
-    configureRoleApi(authService)
-    configureManagementApi(authService)
-    configureAdminSchoolApi(authService)
-    configureAdminAssignmentApi(authService)
-    configureClassManagementApi(authService)
-    configureSchoolOperationsApi(authService)
-    routing {
-        get("/") { call.respondFile(File("/app/web/index-admin.html")) }
-        staticFiles("/", File("/app/web"))
-    }
+fun Application.module(){
+ Database.initialize()
+ Database.connection().use(SchoolOperationsMigration::run)
+ Database.connection().use(ClassUniquenessMigration::run)
+ install(CallLogging)
+ install(ContentNegotiation){json(Json{prettyPrint=true;ignoreUnknownKeys=true;encodeDefaults=true})}
+ configureStatusPages()
+ configureRouting()
+ val authService=AuthService()
+ configureRoleApi(authService)
+ configureManagementApi(authService)
+ configureAdminSchoolApi(authService)
+ configureAdminCrudApi(authService)
+ configureAdminAssignmentApi(authService)
+ configureClassManagementApi(authService)
+ configureSchoolOperationsApi(authService)
+ routing{get("/"){call.respondFile(File("/app/web/index-admin.html"))};staticFiles("/",File("/app/web"))}
 }

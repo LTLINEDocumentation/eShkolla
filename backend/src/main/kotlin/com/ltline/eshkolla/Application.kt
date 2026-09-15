@@ -12,9 +12,13 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.calllogging.CallLogging
+import io.ktor.server.plugins.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.http.content.staticFiles
+import io.ktor.server.response.respondFile
+import io.ktor.server.routing.get
+import java.io.File
 import kotlinx.serialization.json.Json
 
 fun main() {
@@ -34,4 +38,8 @@ fun Application.module() {
     configureRoleApi(authService)
     configureManagementApi(authService)
     configureSchoolOperationsApi(authService)
+    routing {
+        get("/") { call.respondFile(File("/app/web/index.html")) }
+        staticFiles("/", File("/app/web"))
+    }
 }

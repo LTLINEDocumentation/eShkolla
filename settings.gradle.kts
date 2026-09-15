@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "eShkolla"
 include(":app")
+include(":backend")

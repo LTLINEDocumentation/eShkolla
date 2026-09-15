@@ -6,7 +6,9 @@ import com.ltline.eshkolla.repository.GradeRepository
 import com.ltline.eshkolla.repository.PostgresAbsenceRepository
 import com.ltline.eshkolla.repository.PostgresGradeRepository
 import com.ltline.eshkolla.repository.PostgresStudentRepository
+import com.ltline.eshkolla.repository.PostgresTeacherClassRepository
 import com.ltline.eshkolla.repository.StudentRepository
+import com.ltline.eshkolla.repository.TeacherClassRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
@@ -24,6 +26,7 @@ private val authService = AuthService()
 private val studentRepository: StudentRepository = PostgresStudentRepository()
 private val gradeRepository: GradeRepository = PostgresGradeRepository()
 private val absenceRepository: AbsenceRepository = PostgresAbsenceRepository()
+private val teacherClassRepository: TeacherClassRepository = PostgresTeacherClassRepository()
 
 fun Application.configureRouting() {
     routing {
@@ -144,8 +147,8 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
     }
 }
 
-private fun teacherHasClass(teacherId: String, classId: String): Boolean = classesForTeacher(teacherId).contains(classId)
-private fun classesForTeacher(teacherId: String): Set<String> = if (teacherId == "M001") setOf("C03", "C04") else emptySet()
+private fun teacherHasClass(teacherId: String, classId: String): Boolean = teacherClassRepository.isAssigned(teacherId, classId)
+private fun classesForTeacher(teacherId: String): Set<String> = teacherClassRepository.getClassIdsForTeacher(teacherId)
 private suspend fun io.ktor.server.application.ApplicationCall.requireUser(): UserDto? { val user = authService.userFor(bearerToken().orEmpty()); if (user == null) respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return user }
 private suspend fun io.ktor.server.application.ApplicationCall.requireWriteUser(): UserDto? { val user = requireUser() ?: return null; if (user.role !in setOf("ADMINISTRATOR", "DREJTOR", "MESIMDHENES")) { respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni të drejtë për këtë veprim.")); return null }; return user }
 private fun io.ktor.server.application.ApplicationCall.bearerToken(): String? = request.headers["Authorization"]?.removePrefix("Bearer ")?.takeIf { it.isNotBlank() }

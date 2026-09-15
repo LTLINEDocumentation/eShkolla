@@ -2,20 +2,35 @@ package com.ltline.eshkolla.db
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.sql.Connection
+import java.security.SecureRandom
+import java.util.Base64
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
 object Database {
     private val dataSource: HikariDataSource by lazy {
-        HikariConfig().apply {
-            jdbcUrl = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/eshkolla"
-            username = System.getenv("DB_USER") ?: "postgres"
-            password = System.getenv("DB_PASSWORD") ?: "postgres"
-            maximumPoolSize = (System.getenv("DB_POOL_SIZE")?.toIntOrNull() ?: 5).coerceIn(1, 20)
-            minimumIdle = 1
-            connectionTimeout = 10_000
-            validationTimeout = 5_000
-            poolName = "eshkolla-db"
-        }.let(::HikariDataSource)
+        val config = HikariConfig()
+        val databaseUrl = System.getenv("DATABASE_URL")?.trim().orEmpty()
+        if (databaseUrl.isNotBlank()) {
+            val parsed = parseDatabaseUrl(databaseUrl)
+            config.jdbcUrl = parsed.jdbcUrl
+            parsed.username?.let(config::setUsername)
+            parsed.password?.let(config::setPassword)
+        } else {
+            config.jdbcUrl = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/eshkolla"
+            config.username = System.getenv("DB_USER") ?: "postgres"
+            config.password = System.getenv("DB_PASSWORD") ?: "postgres"
+        }
+        config.maximumPoolSize = (System.getenv("DB_POOL_SIZE")?.toIntOrNull() ?: 5).coerceIn(1, 20)
+        config.minimumIdle = 1
+        config.connectionTimeout = 10_000
+        config.validationTimeout = 5_000
+        config.poolName = "eshkolla-db"
+        HikariDataSource(config)
     }
 
     fun connection(): Connection = dataSource.connection
@@ -36,46 +51,58 @@ object Database {
                 statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_grades_student ON grades(student_id)")
                 statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_absences_student ON absences(student_id)")
             }
-            seed(connection)
+            bootstrapAdmin(connection)
         }
     }
 
-    private fun seed(connection: Connection) {
-        connection.prepareStatement("INSERT INTO users(id,username,full_name,role,password_hash) VALUES (?,?,?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
-            val users = listOf(
-                arrayOf("1", "admin", "Administrator", "ADMINISTRATOR", "120000.256.QiRFEz1UR6LS1H56XLO1lg==.DcCG1x4kyQLDlpFFIChVQxA3jGFZJkeXJR6Nc3QpG/k="),
-                arrayOf("2", "drejtor", "Drejtor i shkollës", "DREJTOR", "120000.256.K4sPQFt/jEk7o9pCul1KFA==.Qex3SbmfEEE20GxXzwF0YCxCikntFLAer4FEp3teT9g="),
-                arrayOf("3", "leonard.tahiraj", "Leonard Tahiraj", "MESIMDHENES", "120000.256.d0xej47sYaOo4L2r+tdpQQ==.iaJDzC157DG5Xx1Y/TdteURyncEFeCRik0VnHB9cQnk="),
-                arrayOf("4", "nxenes", "Nxënës Demo", "NXENES", "120000.256.Y+gXYtwX6REChnZ0tSkE9Q==.241tPQuiTy03/PWOGhIMhBrd0Y0cUrFvjFTGJM1J6W8="),
-                arrayOf("5", "prind", "Prind Demo", "PRIND", "120000.256.9Y8S/F2pUPYPUab4+XOxLA==.qHSGpKBGmw0aEoYBzOePooNcoxSPvWXbHvIEDhFLkMI=")
-            )
-            users.forEach { row ->
-                ps.setString(1, row[0]); ps.setString(2, row[1]); ps.setString(3, row[2]); ps.setString(4, row[3]); ps.setString(5, row[4]); ps.addBatch()
-            }
-            ps.executeBatch()
+    private fun bootstrapAdmin(connection: Connection) {
+        val username = System.getenv("BOOTSTRAP_ADMIN_USERNAME")?.trim().orEmpty()
+        val password = System.getenv("BOOTSTRAP_ADMIN_PASSWORD").orEmpty()
+        if (username.isBlank() || password.length < 10) return
+        val fullName = System.getenv("BOOTSTRAP_ADMIN_NAME")?.trim().takeUnless { it.isNullOrBlank() } ?: "Administrator eShkolla"
+        val hash = PasswordHash.create(password)
+        connection.prepareStatement(
+            "INSERT INTO users(id,username,full_name,role,password_hash,active) VALUES (?,?,?,?,?,TRUE) " +
+                "ON CONFLICT (username) DO UPDATE SET full_name=EXCLUDED.full_name, role='ADMINISTRATOR', active=TRUE"
+        ).use { ps ->
+            ps.setString(1, "ADMIN-BOOTSTRAP")
+            ps.setString(2, username)
+            ps.setString(3, fullName)
+            ps.setString(4, "ADMINISTRATOR")
+            ps.setString(5, hash)
+            ps.executeUpdate()
         }
-        connection.prepareStatement("INSERT INTO classes(id,name,grade_level) VALUES (?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
-            listOf("C03" to 7, "C04" to 8).forEach { (id, level) -> ps.setString(1, id); ps.setString(2, "Klasa $id"); ps.setInt(3, level); ps.addBatch() }
-            ps.executeBatch()
-        }
-        connection.prepareStatement("INSERT INTO teachers(id,user_id,full_name,subject_id) VALUES (?,?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
-            ps.setString(1, "M001"); ps.setString(2, "3"); ps.setString(3, "Leonard Tahiraj"); ps.setString(4, "MAT"); ps.executeUpdate()
-        }
-        connection.prepareStatement("INSERT INTO teacher_classes(teacher_id,class_id) VALUES (?,?) ON CONFLICT DO NOTHING").use { ps ->
-            listOf("C03", "C04").forEach { classId -> ps.setString(1, "M001"); ps.setString(2, classId); ps.addBatch() }
-            ps.executeBatch()
-        }
-        connection.prepareStatement("INSERT INTO students(id,full_name,class_id,birth_date,active) VALUES (?,?,?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
-            listOf(arrayOf("NX001", "Ardit Krasniqi", "C03", "2012-03-01"), arrayOf("NX002", "Era Gashi", "C03", "2012-07-18"), arrayOf("NX003", "Diar Berisha", "C04", "2012-02-09"), arrayOf("NX004", "Suela Hoxha", "C04", "2012-11-22")).forEach { row ->
-                ps.setString(1, row[0]); ps.setString(2, row[1]); ps.setString(3, row[2]); ps.setString(4, row[3]); ps.setBoolean(5, true); ps.addBatch()
-            }
-            ps.executeBatch()
-        }
-        connection.prepareStatement("INSERT INTO student_users(user_id,student_id) VALUES (?,?) ON CONFLICT DO NOTHING").use { ps ->
-            ps.setString(1, "4"); ps.setString(2, "NX001"); ps.executeUpdate()
-        }
-        connection.prepareStatement("INSERT INTO parent_students(user_id,student_id) VALUES (?,?) ON CONFLICT DO NOTHING").use { ps ->
-            ps.setString(1, "5"); ps.setString(2, "NX001"); ps.executeUpdate()
+    }
+
+    private data class ParsedDatabaseUrl(val jdbcUrl: String, val username: String?, val password: String?)
+
+    private fun parseDatabaseUrl(value: String): ParsedDatabaseUrl {
+        if (value.startsWith("jdbc:")) return ParsedDatabaseUrl(value, null, null)
+        val uri = URI(value.replaceFirst(Regex("^postgres(ql)?://"), "postgresql://"))
+        val userInfo = uri.rawUserInfo?.split(":", limit = 2)
+        val username = userInfo?.getOrNull(0)?.decodeUrl()
+        val password = userInfo?.getOrNull(1)?.decodeUrl()
+        val host = uri.host ?: error("DATABASE_URL nuk përmban host të vlefshëm")
+        val port = if (uri.port > 0) ":${uri.port}" else ""
+        val path = uri.rawPath?.takeIf { it.isNotBlank() } ?: "/postgres"
+        val query = uri.rawQuery?.takeIf { it.isNotBlank() }?.let { "?$it" } ?: "?sslmode=require"
+        val jdbcUrl = "jdbc:postgresql://$host$port$path$query"
+        return ParsedDatabaseUrl(jdbcUrl, username, password)
+    }
+
+    private fun String.decodeUrl(): String = URLDecoder.decode(this, StandardCharsets.UTF_8)
+
+    private object PasswordHash {
+        private const val ITERATIONS = 120_000
+        private const val KEY_BITS = 256
+        private const val SALT_BYTES = 16
+
+        fun create(password: String): String {
+            val salt = ByteArray(SALT_BYTES).also { SecureRandom().nextBytes(it) }
+            val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_BITS)
+            val hash = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+            spec.clearPassword()
+            return listOf(ITERATIONS, KEY_BITS, Base64.getEncoder().encodeToString(salt), Base64.getEncoder().encodeToString(hash)).joinToString(".")
         }
     }
 }

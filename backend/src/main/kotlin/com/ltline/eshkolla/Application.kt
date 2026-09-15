@@ -1,5 +1,6 @@
 package com.ltline.eshkolla
 
+import com.ltline.eshkolla.api.configureManagementApi
 import com.ltline.eshkolla.api.configureRoleApi
 import com.ltline.eshkolla.api.configureRouting
 import com.ltline.eshkolla.api.configureStatusPages
@@ -26,5 +27,7 @@ fun Application.module() {
     }
     configureStatusPages()
     configureRouting()
-    configureRoleApi(AuthService())
+    val authService = AuthService()
+    configureRoleApi(authService)
+    configureManagementApi(authService)
 }

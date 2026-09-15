@@ -12,9 +12,9 @@ android {
         applicationId = "com.ltline.eshkolla"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080\"")
+        versionCode = 3
+        versionName = "0.3.0"
+        buildConfigField("String", "API_BASE_URL", "\"https://eshkolla-api.onrender.com\"")
     }
 
     buildFeatures {

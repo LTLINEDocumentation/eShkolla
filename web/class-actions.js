@@ -2,9 +2,15 @@ function classLevelOptions(selected=''){return Array.from({length:13},(_,i)=>i+1
 
 async function classes(admin=false){
   const d=await api('/api/v1/management/classes');
-  $('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button class="primary" id="dynamicAdd">+ Shto klasë / paralele</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Klasa/paralelja</th><th>Klasa / niveli</th><th>Nxënës</th><th>Mësimdhënës</th><th>Statusi</th><th>Veprime</th></tr></thead><tbody>${d.length?d.map(x=>`<tr><td>${esc(x.id)}</td><td>${esc(x.name)}</td><td>${esc(x.gradeLevel)}</td><td>${esc(x.studentCount)}</td><td>${esc((x.teacherIds||[]).join(', ')||'—')}</td><td>${x.active?'Aktive':'Joaktive'}</td><td><button class="secondary" onclick="editClass(${JSON.stringify(x.id)},${JSON.stringify(x.name)},${Number(x.gradeLevel)})">Rregullo</button> <button class="secondary" onclick="deleteClass(${JSON.stringify(x.id)},${JSON.stringify(x.name)})">Fshij</button></td></tr>`).join(''):`<tr><td colspan="7" class="empty-state">Nuk ka të dhëna.</td></tr>`}</tbody></table></div>`;
+  $('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button class="primary" id="dynamicAdd">+ Shto klasë / paralele</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Klasa/paralelja</th><th>Klasa / niveli</th><th>Nxënës</th><th>Mësimdhënës</th><th>Statusi</th><th>Veprime</th></tr></thead><tbody>${d.length?d.map(x=>`<tr><td>${esc(x.id)}</td><td>${esc(x.name)}</td><td>${esc(x.gradeLevel)}</td><td>${esc(x.studentCount)}</td><td>${esc((x.teacherIds||[]).join(', ')||'—')}</td><td>${x.active?'Aktive':'Joaktive'}</td><td><div class="section-actions"><button type="button" class="secondary class-edit" data-id="${esc(x.id)}">Rregullo</button><button type="button" class="secondary class-delete" data-id="${esc(x.id)}" data-name="${esc(x.name)}">Fshij</button></div></td></tr>`).join(''):`<tr><td colspan="7" class="empty-state">Nuk ka të dhëna.</td></tr>`}</tbody></table></div>`;
   $('resultCount').textContent=`${d.length} rezultate reale`;
   $('dynamicAdd').onclick=()=>classForm();
+
+  document.querySelectorAll('.class-edit').forEach(button=>button.addEventListener('click',()=>{
+    const item=d.find(x=>x.id===button.dataset.id);
+    if(item) editClass(item.id,item.name,item.gradeLevel);
+  }));
+  document.querySelectorAll('.class-delete').forEach(button=>button.addEventListener('click',()=>deleteClass(button.dataset.id,button.dataset.name)));
 }
 
 async function classForm(){
@@ -26,7 +32,7 @@ function editClass(id,name,gradeLevel){
 }
 
 async function deleteClass(id,name){
-  if(!confirm(`A dëshironi ta fshini klasën/paralelen "${name}"?\n\nFshirja lejohet vetëm nëse nuk ka nxënës, mësimdhënës, caktime ose orar të lidhur me të.`)) return;
+  if(!confirm(`A jeni i sigurt që doni ta fshini klasën/paralelen "${name}"?\n\nKy veprim nuk mund të zhbëhet.`)) return;
   try{
     await api(`/api/v1/management/classes/${encodeURIComponent(id)}`,{method:'DELETE'});
     await classes(true);

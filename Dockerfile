@@ -7,5 +7,6 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 ENV HOST=0.0.0.0
 COPY --from=build /workspace/backend/build/install/backend/ /app/
+COPY --from=build /workspace/web/ /app/web/
 EXPOSE 8080
 ENTRYPOINT ["/app/bin/backend"]

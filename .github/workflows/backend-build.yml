@@ -5,12 +5,16 @@ on:
     branches: [ main ]
     paths:
       - 'backend/**'
+      - 'web/**'
+      - 'Dockerfile'
       - 'settings.gradle.kts'
       - '.github/workflows/backend-build.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'backend/**'
+      - 'web/**'
+      - 'Dockerfile'
       - 'settings.gradle.kts'
       - '.github/workflows/backend-build.yml'
 
@@ -31,6 +35,13 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+    env:
+      BOOTSTRAP_ADMIN_USERNAME: admin
+      BOOTSTRAP_ADMIN_PASSWORD: test-admin-password-123
+      BOOTSTRAP_ADMIN_NAME: Test Administrator
+      DB_URL: jdbc:postgresql://localhost:5432/eshkolla
+      DB_USER: postgres
+      DB_PASSWORD: postgres
     steps:
       - name: Checkout
         uses: actions/checkout@v4

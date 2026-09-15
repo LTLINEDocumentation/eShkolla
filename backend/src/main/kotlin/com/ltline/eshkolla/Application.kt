@@ -44,7 +44,7 @@ fun Application.module() {
     configureClassManagementApi(authService)
     configureSchoolOperationsApi(authService)
     routing {
-        get("/") { call.respondFile(File("/app/web/index.html")) }
+        get("/") { call.respondFile(File("/app/web/index-admin.html")) }
         staticFiles("/", File("/app/web"))
     }
 }

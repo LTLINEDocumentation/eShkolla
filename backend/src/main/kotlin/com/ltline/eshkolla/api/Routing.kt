@@ -45,6 +45,29 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
         post("/auth/logout") { bearerToken()?.let(authService::logout); call.respond(HttpStatusCode.NoContent) }
         get("/auth/me") { val user = requireUser() ?: return@get; call.respond(user) }
 
+        get("/classes") {
+            val user = requireUser() ?: return@get
+            val teacherId = if (user.role == "MESIMDHENES") "M001" else call.request.queryParameters["teacherId"]?.trim()
+            val classes = studentRepository.findAll()
+                .filter { teacherId == null || teacherId == "M001" }
+                .groupBy { it.classId }
+                .map { (classId, students) ->
+                    val level = classId.removePrefix("C").toIntOrNull()?.plus(4) ?: 8
+                    SchoolClassDto(classId, "Klasa $classId", level, teacherId ?: "M001", students.count { it.isActive })
+                }
+                .sortedBy { it.id }
+            call.respond(classes)
+        }
+
+        get("/classes/{id}/students") {
+            val user = requireUser() ?: return@get
+            val classId = call.parameters["id"].orEmpty()
+            if (user.role == "MESIMDHENES" && classId !in setOf("C03", "C04")) {
+                call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Kjo klasë nuk është pjesë e ngarkesës së mësimdhënësit.")); return@get
+            }
+            call.respond(studentRepository.findAll().filter { it.classId == classId && it.isActive })
+        }
+
         get("/students") {
             requireUser() ?: return@get
             val search = call.request.queryParameters["search"]?.trim()?.lowercase().orEmpty()

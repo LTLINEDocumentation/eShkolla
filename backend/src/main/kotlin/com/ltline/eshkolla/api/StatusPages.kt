@@ -9,7 +9,7 @@ import io.ktor.server.response.respond
 fun Application.configureStatusPages() {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
-            environment.log.error("Kërkesë API dështoi", cause)
+            call.application.environment.log.error("Kërkesë API dështoi", cause)
             call.respond(HttpStatusCode.InternalServerError, ApiError("INTERNAL_ERROR", "Ndodhi një gabim i brendshëm."))
         }
     }

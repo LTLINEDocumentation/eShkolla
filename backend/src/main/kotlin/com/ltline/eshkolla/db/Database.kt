@@ -39,23 +39,35 @@ object Database {
     }
 
     private fun seed(connection: Connection) {
+        connection.prepareStatement("INSERT INTO users(id,username,full_name,role,password_hash) VALUES (?,?,?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
+            val users = listOf(
+                arrayOf("1", "admin", "Administrator", "ADMINISTRATOR", "120000.256.QiRFEz1UR6LS1H56XLO1lg==.DcCG1x4kyQLDlpFFIChVQxA3jGFZJkeXJR6Nc3QpG/k="),
+                arrayOf("2", "drejtor", "Drejtor i shkollës", "DREJTOR", "120000.256.K4sPQFt/jEk7o9pCul1KFA==.Qex3SbmfEEE20GxXzwF0YCxCikntFLAer4FEp3teT9g="),
+                arrayOf("3", "leonard.tahiraj", "Leonard Tahiraj", "MESIMDHENES", "120000.256.d0xej47sYaOo4L2r+tdpQQ==.iaJDzC157DG5Xx1Y/TdteURyncEFeCRik0VnHB9cQnk="),
+                arrayOf("4", "nxenes", "Nxënës Demo", "NXENES", "120000.256.Y+gXYtwX6REChnZ0tSkE9Q==.241tPQuiTy03/PWOGhIMhBrd0Y0cUrFvjFTGJM1J6W8="),
+                arrayOf("5", "prind", "Prind Demo", "PRIND", "120000.256.9Y8S/F2pUPYPUab4+XOxLA==.qHSGpKBGmw0aEoYBzOePooNcoxSPvWXbHvIEDhFLkMI=")
+            )
+            users.forEach { row ->
+                ps.setString(1, row[0]); ps.setString(2, row[1]); ps.setString(3, row[2]); ps.setString(4, row[3]); ps.setString(5, row[4]); ps.addBatch()
+            }
+            ps.executeBatch()
+        }
         connection.prepareStatement("INSERT INTO classes(id,name,grade_level) VALUES (?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
             listOf("C03" to 7, "C04" to 8).forEach { (id, level) -> ps.setString(1, id); ps.setString(2, "Klasa $id"); ps.setInt(3, level); ps.addBatch() }
             ps.executeBatch()
-        }
-        connection.prepareStatement("INSERT INTO users(id,username,full_name,role,password_hash) VALUES (?,?,?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
-            ps.setString(1, "3"); ps.setString(2, "leonard.tahiraj"); ps.setString(3, "Leonard Tahiraj"); ps.setString(4, "MESIMDHENES"); ps.setString(5, "120000.256.Hw64c3yCXWTIECIEoATV/w==.Tz/qnvbZG+ulU9H3JfQEmezJfDjD4rydplgU6AypCNE="); ps.executeUpdate()
         }
         connection.prepareStatement("INSERT INTO teachers(id,user_id,full_name,subject_id) VALUES (?,?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
             ps.setString(1, "M001"); ps.setString(2, "3"); ps.setString(3, "Leonard Tahiraj"); ps.setString(4, "MAT"); ps.executeUpdate()
         }
         connection.prepareStatement("INSERT INTO teacher_classes(teacher_id,class_id) VALUES (?,?) ON CONFLICT DO NOTHING").use { ps ->
-            listOf("C03", "C04").forEach { classId -> ps.setString(1, "M001"); ps.setString(2, classId); ps.addBatch() }; ps.executeBatch()
+            listOf("C03", "C04").forEach { classId -> ps.setString(1, "M001"); ps.setString(2, classId); ps.addBatch() }
+            ps.executeBatch()
         }
         connection.prepareStatement("INSERT INTO students(id,full_name,class_id,birth_date,active) VALUES (?,?,?,?,?) ON CONFLICT (id) DO NOTHING").use { ps ->
             listOf(arrayOf("NX001", "Ardit Krasniqi", "C03", "2012-03-01"), arrayOf("NX002", "Era Gashi", "C03", "2012-07-18"), arrayOf("NX003", "Diar Berisha", "C04", "2012-02-09"), arrayOf("NX004", "Suela Hoxha", "C04", "2012-11-22")).forEach { row ->
                 ps.setString(1, row[0]); ps.setString(2, row[1]); ps.setString(3, row[2]); ps.setString(4, row[3]); ps.setBoolean(5, true); ps.addBatch()
-            }; ps.executeBatch()
+            }
+            ps.executeBatch()
         }
     }
 }

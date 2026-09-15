@@ -54,19 +54,23 @@ class TeacherAssessmentViewModel(
         }
     }
 
-    fun saveGrade(grade: Grade) {
-        viewModelScope.launch {
-            runCatching { gradeRepository.addGrade(grade) }
-                .onSuccess { refresh() }
-                .onFailure { _uiState.value = _uiState.value.copy(error = it.message) }
-        }
-    }
+    fun saveGrade(grade: Grade) = execute("Gabim gjatë ruajtjes së notës.") { gradeRepository.addGrade(grade) }
 
-    fun saveAbsence(absence: Absence) {
+    fun updateGrade(grade: Grade) = execute("Gabim gjatë ndryshimit të notës.") { gradeRepository.updateGrade(grade) }
+
+    fun deleteGrade(id: String) = execute("Gabim gjatë fshirjes së notës.") { gradeRepository.deleteGrade(id) }
+
+    fun saveAbsence(absence: Absence) = execute("Gabim gjatë ruajtjes së mungesës.") { absenceRepository.addAbsence(absence) }
+
+    fun updateAbsence(absence: Absence) = execute("Gabim gjatë ndryshimit të mungesës.") { absenceRepository.updateAbsence(absence) }
+
+    fun deleteAbsence(id: String) = execute("Gabim gjatë fshirjes së mungesës.") { absenceRepository.deleteAbsence(id) }
+
+    private fun execute(defaultError: String, action: suspend () -> Any?) {
         viewModelScope.launch {
-            runCatching { absenceRepository.addAbsence(absence) }
+            runCatching { action() }
                 .onSuccess { refresh() }
-                .onFailure { _uiState.value = _uiState.value.copy(error = it.message) }
+                .onFailure { _uiState.value = _uiState.value.copy(error = it.message ?: defaultError) }
         }
     }
 }

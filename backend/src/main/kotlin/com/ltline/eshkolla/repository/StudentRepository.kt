@@ -1,7 +1,8 @@
 package com.ltline.eshkolla.repository
 
 import com.ltline.eshkolla.api.StudentDto
-import java.util.concurrent.ConcurrentHashMap
+import com.ltline.eshkolla.db.Database
+import java.sql.ResultSet
 
 interface StudentRepository {
     fun findAll(): List<StudentDto>
@@ -10,25 +11,28 @@ interface StudentRepository {
     fun delete(id: String): Boolean
 }
 
-class InMemoryStudentRepository : StudentRepository {
-    private val students = ConcurrentHashMap<String, StudentDto>(
-        listOf(
-            StudentDto("NX001", "Ardit Krasniqi", "C03", "2012-03-01", true),
-            StudentDto("NX002", "Era Gashi", "C03", "2012-07-18", true),
-            StudentDto("NX003", "Diar Berisha", "C04", "2012-02-09", true),
-            StudentDto("NX004", "Suela Hoxha", "C04", "2012-11-22", true)
-        ).associateBy { it.id }
-    )
+class PostgresStudentRepository : StudentRepository {
+    override fun findAll(): List<StudentDto> = Database.connection().use { c ->
+        c.prepareStatement("SELECT id,full_name,class_id,birth_date,active FROM students ORDER BY full_name").use { ps -> ps.executeQuery().use { rs -> rs.mapStudents() } }
+    }
 
-    override fun findAll(): List<StudentDto> = students.values.sortedBy { it.fullName }
-    override fun findById(id: String): StudentDto? = students[id]
-    override fun save(student: StudentDto): StudentDto {
-        students[student.id] = student
-        return student
+    override fun findById(id: String): StudentDto? = Database.connection().use { c ->
+        c.prepareStatement("SELECT id,full_name,class_id,birth_date,active FROM students WHERE id=?").use { ps ->
+            ps.setString(1, id); ps.executeQuery().use { rs -> if (rs.next()) rs.toStudent() else null }
+        }
     }
-    override fun delete(id: String): Boolean {
-        val current = students[id] ?: return false
-        students[id] = current.copy(isActive = false)
-        return true
+
+    override fun save(student: StudentDto): StudentDto = Database.connection().use { c ->
+        c.prepareStatement("INSERT INTO students(id,full_name,class_id,birth_date,active) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET full_name=EXCLUDED.full_name,class_id=EXCLUDED.class_id,birth_date=EXCLUDED.birth_date,active=EXCLUDED.active").use { ps ->
+            ps.setString(1, student.id); ps.setString(2, student.fullName); ps.setString(3, student.classId); ps.setString(4, student.birthDate); ps.setBoolean(5, student.isActive); ps.executeUpdate()
+        }
+        student
     }
+
+    override fun delete(id: String): Boolean = Database.connection().use { c ->
+        c.prepareStatement("UPDATE students SET active=false WHERE id=? AND active=true").use { ps -> ps.setString(1, id); ps.executeUpdate() > 0 }
+    }
+
+    private fun ResultSet.toStudent() = StudentDto(getString("id"), getString("full_name"), getString("class_id"), getString("birth_date"), getBoolean("active"))
+    private fun ResultSet.mapStudents(): List<StudentDto> { val result = mutableListOf<StudentDto>(); while (next()) result += toStudent(); return result }
 }

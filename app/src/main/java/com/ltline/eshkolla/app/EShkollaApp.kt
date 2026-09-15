@@ -8,12 +8,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ltline.eshkolla.domain.auth.AuthState
+import com.ltline.eshkolla.domain.model.UserRole
 import com.ltline.eshkolla.features.absences.AbsenceScreen
 import com.ltline.eshkolla.features.auth.LoginScreen
 import com.ltline.eshkolla.features.auth.RealAuthViewModel
 import com.ltline.eshkolla.features.classes.TeacherClassesScreen
 import com.ltline.eshkolla.features.dashboard.DashboardScreen
 import com.ltline.eshkolla.features.grades.GradeScreen
+import com.ltline.eshkolla.features.management.ManagementScreen
 import com.ltline.eshkolla.features.students.StudentScreen
 import com.ltline.eshkolla.features.students.StudentViewModel
 
@@ -26,6 +28,7 @@ private object Routes {
     const val GRADE_FOR_STUDENT = "grades/{studentId}"
     const val ABSENCES = "absences"
     const val ABSENCE_FOR_STUDENT = "absences/{studentId}"
+    const val MANAGEMENT = "management/{section}"
 }
 
 @Composable
@@ -43,7 +46,9 @@ fun EShkollaApp() {
             DashboardScreen(user = user, onModuleClick = { module ->
                 when (module) {
                     "students" -> navController.navigate(Routes.STUDENTS)
-                    "classes" -> navController.navigate(Routes.CLASSES)
+                    "classes" -> if (user?.role == UserRole.ADMINISTRATOR || user?.role == UserRole.DREJTOR) navController.navigate("management/classes") else navController.navigate(Routes.CLASSES)
+                    "teachers" -> navController.navigate("management/teachers")
+                    "users" -> navController.navigate("management/users")
                     "grades" -> navController.navigate(Routes.GRADES)
                     "absences" -> navController.navigate(Routes.ABSENCES)
                 }
@@ -57,6 +62,10 @@ fun EShkollaApp() {
             TeacherClassesScreen(onBack = { navController.popBackStack() },
                 onGrades = { id -> navController.navigate("grades/$id") },
                 onAbsences = { id -> navController.navigate("absences/$id") })
+        }
+        composable(Routes.MANAGEMENT, arguments = listOf(navArgument("section") { type = NavType.StringType })) {
+            val user = (authViewModel.state.value as? AuthState.LoggedIn)?.user
+            ManagementScreen(role = user?.role ?: UserRole.NXENES, section = it.arguments?.getString("section").orEmpty(), onBack = { navController.popBackStack() })
         }
         composable(Routes.GRADES) { GradeScreen(onBack = { navController.popBackStack() }) }
         composable(Routes.GRADE_FOR_STUDENT, arguments = listOf(navArgument("studentId") { type = NavType.StringType })) {

@@ -27,21 +27,21 @@ fun Application.configureRoleApi(authService: AuthService) {
     routing {
         route("/api/v1") {
             get("/me/profile") {
-                val token = roleBearerToken()
+                val token = call.roleBearerToken()
                 if (token == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return@get }
                 val user = authorization.user(token)
                 if (user == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Sesioni nuk është i vlefshëm.")); return@get }
                 call.respond(user)
             }
             get("/me/permissions") {
-                val token = roleBearerToken()
+                val token = call.roleBearerToken()
                 if (token == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return@get }
                 val user = authorization.user(token)
                 if (user == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Sesioni nuk është i vlefshëm.")); return@get }
                 call.respond(PermissionResponse(Permission.entries.filter { RolePermissions.allows(user.role, it) }.map { it.name }.sorted()))
             }
             get("/dashboard") {
-                val token = roleBearerToken()
+                val token = call.roleBearerToken()
                 if (token == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return@get }
                 val user = authorization.user(token)
                 if (user == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Sesioni nuk është i vlefshëm.")); return@get }
@@ -56,7 +56,7 @@ fun Application.configureRoleApi(authService: AuthService) {
                 call.respond(RoleDashboardResponse(user.role, user.fullName, modules))
             }
             get("/me/teacher") {
-                val token = roleBearerToken()
+                val token = call.roleBearerToken()
                 if (token == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return@get }
                 val user = authorization.require(token, Permission.OWN_PROFILE_READ)
                 if (user.role != "MESIMDHENES") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm mësimdhënësi mund ta shohë këtë profil.")); return@get }
@@ -75,7 +75,7 @@ fun Application.configureRoleApi(authService: AuthService) {
                 if (result == null) call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Profili i mësimdhënësit nuk u gjet.")) else call.respond(result)
             }
             get("/me/children") {
-                val token = roleBearerToken()
+                val token = call.roleBearerToken()
                 if (token == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return@get }
                 val user = authorization.require(token, Permission.CHILD_PROFILE_READ)
                 if (user.role != "PRIND") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm prindi mund ta shohë këtë listë.")); return@get }
@@ -87,7 +87,7 @@ fun Application.configureRoleApi(authService: AuthService) {
                 call.respond(children)
             }
             get("/me/student") {
-                val token = roleBearerToken()
+                val token = call.roleBearerToken()
                 if (token == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return@get }
                 val user = authorization.require(token, Permission.OWN_PROFILE_READ)
                 if (user.role != "NXENES") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm nxënësi mund ta shohë këtë profil.")); return@get }

@@ -12,7 +12,9 @@ import javax.crypto.SecretKeyFactory
 class AuthService {
     private data class Account(val id: String, val username: String, val fullName: String, val role: String)
 
-    private val sessions = ConcurrentHashMap<String, Account>()
+    companion object {
+        private val sessions = ConcurrentHashMap<String, Account>()
+    }
 
     fun login(username: String, password: String): Pair<String, UserDto>? {
         val account = Database.connection().use { connection ->

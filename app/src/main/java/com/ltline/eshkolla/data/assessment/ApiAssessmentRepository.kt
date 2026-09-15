@@ -34,7 +34,7 @@ class ApiAbsenceRepository : AbsenceRepository {
 }
 
 private fun request(path: String, method: String = "GET", body: JSONObject? = null): String {
-    val connection = (URL(ApiConfig.BASE_URL.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
+    val connection = (URL(ApiConfig.baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
         requestMethod = method
         connectTimeout = 10_000
         readTimeout = 15_000

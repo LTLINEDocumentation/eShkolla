@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.ltline.eshkolla.domain.auth.AuthState
+import com.ltline.eshkolla.features.absences.AbsenceScreen
 import com.ltline.eshkolla.features.auth.LoginScreen
 import com.ltline.eshkolla.features.auth.RealAuthViewModel
 import com.ltline.eshkolla.features.dashboard.DashboardScreen
@@ -18,6 +19,7 @@ private object Routes {
     const val DASHBOARD = "dashboard"
     const val STUDENTS = "students"
     const val GRADES = "grades"
+    const val ABSENCES = "absences"
 }
 
 @Composable
@@ -39,6 +41,7 @@ fun EShkollaApp() {
                 when (module) {
                     "students" -> navController.navigate(Routes.STUDENTS)
                     "grades" -> navController.navigate(Routes.GRADES)
+                    "absences" -> navController.navigate(Routes.ABSENCES)
                 }
             })
         }
@@ -48,6 +51,9 @@ fun EShkollaApp() {
         }
         composable(Routes.GRADES) {
             GradeScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.ABSENCES) {
+            AbsenceScreen(onBack = { navController.popBackStack() })
         }
     }
 }

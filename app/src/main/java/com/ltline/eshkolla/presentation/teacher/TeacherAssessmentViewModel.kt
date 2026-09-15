@@ -2,8 +2,8 @@ package com.ltline.eshkolla.presentation.teacher
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ltline.eshkolla.data.assessment.FakeAbsenceRepository
-import com.ltline.eshkolla.data.assessment.FakeGradeRepository
+import com.ltline.eshkolla.data.assessment.ApiAbsenceRepository
+import com.ltline.eshkolla.data.assessment.ApiGradeRepository
 import com.ltline.eshkolla.domain.model.Absence
 import com.ltline.eshkolla.domain.model.Grade
 import com.ltline.eshkolla.domain.repository.AbsenceRepository
@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
- data class TeacherAssessmentUiState(
+data class TeacherAssessmentUiState(
     val grades: List<Grade> = emptyList(),
     val absences: List<Absence> = emptyList(),
     val isLoading: Boolean = false,
@@ -21,8 +21,8 @@ import kotlinx.coroutines.launch
 )
 
 class TeacherAssessmentViewModel(
-    private val gradeRepository: GradeRepository = FakeGradeRepository(),
-    private val absenceRepository: AbsenceRepository = FakeAbsenceRepository()
+    private val gradeRepository: GradeRepository = ApiGradeRepository(),
+    private val absenceRepository: AbsenceRepository = ApiAbsenceRepository()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TeacherAssessmentUiState())
     val uiState: StateFlow<TeacherAssessmentUiState> = _uiState.asStateFlow()
@@ -32,13 +32,13 @@ class TeacherAssessmentViewModel(
     fun refresh() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            runCatching {
-                gradeRepository.getGrades() to absenceRepository.getAbsences()
-            }.onSuccess { (grades, absences) ->
-                _uiState.value = TeacherAssessmentUiState(grades = grades, absences = absences)
-            }.onFailure {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = it.message ?: "Gabim gjatë ngarkimit.")
-            }
+            runCatching { gradeRepository.getGrades() to absenceRepository.getAbsences() }
+                .onSuccess { (grades, absences) ->
+                    _uiState.value = TeacherAssessmentUiState(grades = grades, absences = absences)
+                }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = it.message ?: "Gabim gjatë ngarkimit.")
+                }
         }
     }
 

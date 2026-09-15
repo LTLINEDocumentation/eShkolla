@@ -5,8 +5,8 @@ import com.zaxxer.hikari.HikariDataSource
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.sql.Connection
 import java.security.SecureRandom
+import java.sql.Connection
 import java.util.Base64
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
@@ -78,19 +78,20 @@ object Database {
 
     private fun parseDatabaseUrl(value: String): ParsedDatabaseUrl {
         if (value.startsWith("jdbc:")) return ParsedDatabaseUrl(value, null, null)
-        val uri = URI(value.replaceFirst(Regex("^postgres(ql)?://"), "postgresql://"))
+        val normalized = value.replaceFirst(Regex("^postgres(ql)?://"), "postgresql://")
+        val uri = URI(normalized)
         val userInfo = uri.rawUserInfo?.split(":", limit = 2)
-        val username = userInfo?.getOrNull(0)?.decodeUrl()
-        val password = userInfo?.getOrNull(1)?.decodeUrl()
+        val username = userInfo?.getOrNull(0)?.decodeUrlComponent()
+        val password = userInfo?.getOrNull(1)?.decodeUrlComponent()
         val host = uri.host ?: error("DATABASE_URL nuk përmban host të vlefshëm")
         val port = if (uri.port > 0) ":${uri.port}" else ""
         val path = uri.rawPath?.takeIf { it.isNotBlank() } ?: "/postgres"
-        val query = uri.rawQuery?.takeIf { it.isNotBlank() }?.let { "?$it" } ?: "?sslmode=require"
+        val query = uri.rawQuery?.takeIf { it.isNotBlank() }?.let { if (it.contains("sslmode=")) "?$it" else "?$it&sslmode=require" } ?: "?sslmode=require"
         val jdbcUrl = "jdbc:postgresql://$host$port$path$query"
         return ParsedDatabaseUrl(jdbcUrl, username, password)
     }
 
-    private fun String.decodeUrl(): String = URLDecoder.decode(this, StandardCharsets.UTF_8)
+    private fun String.decodeUrlComponent(): String = URLDecoder.decode(replace("+", "%2B"), StandardCharsets.UTF_8)
 
     private object PasswordHash {
         private const val ITERATIONS = 120_000

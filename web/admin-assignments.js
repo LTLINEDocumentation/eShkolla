@@ -8,12 +8,15 @@ async function assignments(){
   ]);
   $('moduleContent').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Mësimdhënësi</th><th>Lënda</th><th>Klasa/paralelja</th><th>Veprime</th></tr></thead><tbody>${d.length?d.map(x=>`<tr><td>${esc(x.teacherName)}</td><td>${esc(x.subjectName)}</td><td>${esc(x.className)}</td><td><div class="section-actions"><button class="secondary" data-edit="${esc(x.teacherId)}|${esc(x.subjectId)}|${esc(x.classId)}">Rregullo</button><button class="secondary" data-delete="${esc(x.teacherId)}|${esc(x.subjectId)}|${esc(x.classId)}">Hiq</button></div></td></tr>`).join(''):`<tr><td colspan="4" class="empty-state">Nuk ka caktime.</td></tr>`}</tbody></table></div>`;
   $('resultCount').textContent=`${d.length} caktime reale`;
+
+  // "Shto" mbetet vetëm si buton në pjesën e sipërme të modulit.
   addButton('Cakto mësimdhënës + lëndë + klasë',()=>assignmentForm(t,s,c));
+
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{
     const [teacherId,subjectId,classId]=b.dataset.edit.split('|');
     assignmentEditForm(d.find(x=>x.teacherId===teacherId&&x.subjectId===subjectId&&x.classId===classId),t,s,c);
   });
-  document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>removeAssignment(b.dataset.delete.split('|'),d));
+  document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>removeAssignment(b.dataset.delete.split('|')));
 }
 
 function assignmentForm(teachers,subjects,classes){
@@ -36,7 +39,7 @@ function assignmentModal(title,item,teachers,subjects,classes){
 
 async function removeAssignment(parts){
   const [teacherId,subjectId,classId]=parts;
-  if(!confirm('A dëshironi ta hiqni këtë caktim? Ky veprim e heq lidhjen mësimdhënës + lëndë + klasë.')) return;
+  if(!confirm('A jeni i sigurt që doni ta hiqni këtë caktim?')) return;
   try{
     await api(`/api/v1/management/teacher-subject-assignments?teacherId=${encodeURIComponent(teacherId)}&subjectId=${encodeURIComponent(subjectId)}&classId=${encodeURIComponent(classId)}`,{method:'DELETE'});
     await assignments();

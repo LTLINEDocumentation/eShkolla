@@ -7,6 +7,7 @@ import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.sql.Connection
+import java.util.UUID
 
 object Database {
     private val dataSource: HikariDataSource by lazy {
@@ -58,16 +59,32 @@ object Database {
         if (username.isBlank() || password.length < 10) return
         val fullName = System.getenv("BOOTSTRAP_ADMIN_NAME")?.trim().takeUnless { it.isNullOrBlank() } ?: "Administrator eShkolla"
         val hash = PasswordHasher.create(password)
-        connection.prepareStatement(
-            "INSERT INTO users(id,username,full_name,role,password_hash,active) VALUES (?,?,?,?,?,TRUE) " +
-                "ON CONFLICT (username) DO UPDATE SET full_name=EXCLUDED.full_name, role='ADMINISTRATOR', active=TRUE"
-        ).use { ps ->
-            ps.setString(1, "ADMIN-BOOTSTRAP")
-            ps.setString(2, username)
-            ps.setString(3, fullName)
-            ps.setString(4, "ADMINISTRATOR")
-            ps.setString(5, hash)
-            ps.executeUpdate()
+
+        connection.prepareStatement("SELECT id FROM users WHERE username = ?").use { find ->
+            find.setString(1, username)
+            find.executeQuery().use { rs ->
+                if (rs.next()) {
+                    connection.prepareStatement(
+                        "UPDATE users SET full_name=?, role='ADMINISTRATOR', password_hash=?, active=TRUE WHERE id=?"
+                    ).use { update ->
+                        update.setString(1, fullName)
+                        update.setString(2, hash)
+                        update.setString(3, rs.getString("id"))
+                        update.executeUpdate()
+                    }
+                } else {
+                    connection.prepareStatement(
+                        "INSERT INTO users(id,username,full_name,role,password_hash,active) VALUES (?,?,?,?,?,TRUE)"
+                    ).use { insert ->
+                        insert.setString(1, UUID.randomUUID().toString())
+                        insert.setString(2, username)
+                        insert.setString(3, fullName)
+                        insert.setString(4, "ADMINISTRATOR")
+                        insert.setString(5, hash)
+                        insert.executeUpdate()
+                    }
+                }
+            }
         }
     }
 

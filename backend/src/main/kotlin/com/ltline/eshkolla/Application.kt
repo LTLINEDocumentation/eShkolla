@@ -6,6 +6,7 @@ import com.ltline.eshkolla.api.configureAdminCrudApi
 import com.ltline.eshkolla.api.configureClassManagementApi
 import com.ltline.eshkolla.api.configureManagementApi
 import com.ltline.eshkolla.api.configureRoleApi
+import com.ltline.eshkolla.api.configureRoleDataApi
 import com.ltline.eshkolla.api.configureRouting
 import com.ltline.eshkolla.api.configureSchoolOperationsApi
 import com.ltline.eshkolla.api.configureStatusPages
@@ -39,6 +40,7 @@ fun Application.module(){
  configureRouting()
  val authService=AuthService()
  configureRoleApi(authService)
+ configureRoleDataApi(authService)
  configureManagementApi(authService)
  configureAdminSchoolApi(authService)
  configureAdminCrudApi(authService)

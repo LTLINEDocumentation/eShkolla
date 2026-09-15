@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ltline.eshkolla.data.assessment.ApiAbsenceRepository
 import com.ltline.eshkolla.data.assessment.ApiGradeRepository
+import com.ltline.eshkolla.data.school.ApiStudentRepository
 import com.ltline.eshkolla.domain.model.Absence
 import com.ltline.eshkolla.domain.model.Grade
+import com.ltline.eshkolla.domain.model.Student
 import com.ltline.eshkolla.domain.repository.AbsenceRepository
 import com.ltline.eshkolla.domain.repository.GradeRepository
+import com.ltline.eshkolla.domain.school.StudentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,13 +19,15 @@ import kotlinx.coroutines.launch
 data class TeacherAssessmentUiState(
     val grades: List<Grade> = emptyList(),
     val absences: List<Absence> = emptyList(),
+    val students: List<Student> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
 
 class TeacherAssessmentViewModel(
     private val gradeRepository: GradeRepository = ApiGradeRepository(),
-    private val absenceRepository: AbsenceRepository = ApiAbsenceRepository()
+    private val absenceRepository: AbsenceRepository = ApiAbsenceRepository(),
+    private val studentRepository: StudentRepository = ApiStudentRepository()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TeacherAssessmentUiState())
     val uiState: StateFlow<TeacherAssessmentUiState> = _uiState.asStateFlow()
@@ -32,13 +37,20 @@ class TeacherAssessmentViewModel(
     fun refresh() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            runCatching { gradeRepository.getGrades() to absenceRepository.getAbsences() }
-                .onSuccess { (grades, absences) ->
-                    _uiState.value = TeacherAssessmentUiState(grades = grades, absences = absences)
-                }
-                .onFailure {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = it.message ?: "Gabim gjatë ngarkimit.")
-                }
+            runCatching {
+                val grades = gradeRepository.getGrades()
+                val absences = absenceRepository.getAbsences()
+                val students = studentRepository.getStudents().filter { it.isActive }.sortedBy { it.fullName.lowercase() }
+                Triple(grades, absences, students)
+            }.onSuccess { (grades, absences, students) ->
+                _uiState.value = TeacherAssessmentUiState(
+                    grades = grades,
+                    absences = absences,
+                    students = students
+                )
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = it.message ?: "Gabim gjatë ngarkimit.")
+            }
         }
     }
 

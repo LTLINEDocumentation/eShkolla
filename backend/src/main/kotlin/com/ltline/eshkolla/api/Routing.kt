@@ -46,9 +46,11 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
 
         get("/classes") {
             val user = requireUser() ?: return@get
-            val teacherId = if (user.role == "MESIMDHENES") "M001" else call.request.queryParameters["teacherId"]?.trim()
+            val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else call.request.queryParameters["teacherId"]?.trim()
+            if (user.role == "MESIMDHENES" && teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@get }
+            val allowed = teacherId?.let(::classesForTeacher)
             val classes = studentRepository.findAll().groupBy { it.classId }
-                .filter { teacherId == null || teacherId == "M001" }
+                .filter { allowed == null || it.key in allowed }
                 .map { (classId, students) -> SchoolClassDto(classId, "Klasa $classId", classId.removePrefix("C").toIntOrNull()?.plus(4) ?: 8, teacherId ?: "M001", students.count { it.isActive }) }
                 .sortedBy { it.id }
             call.respond(classes)
@@ -56,23 +58,32 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
         get("/classes/{id}/students") {
             val user = requireUser() ?: return@get
             val classId = call.parameters["id"].orEmpty()
-            if (user.role == "MESIMDHENES" && classId !in setOf("C03", "C04")) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Kjo klasë nuk është pjesë e ngarkesës së mësimdhënësit.")); return@get }
+            if (user.role == "MESIMDHENES") {
+                val teacherId = authService.teacherIdFor(bearerToken().orEmpty())
+                if (teacherId == null || !teacherHasClass(teacherId, classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Kjo klasë nuk është pjesë e ngarkesës së mësimdhënësit.")); return@get }
+            }
             call.respond(studentRepository.findAll().filter { it.classId == classId && it.isActive })
         }
         get("/students") {
-            requireUser() ?: return@get
+            val user = requireUser() ?: return@get
+            val allowed = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty())?.let(::classesForTeacher) else null
             val search = call.request.queryParameters["search"]?.trim()?.lowercase().orEmpty()
             val active = call.request.queryParameters["active"]?.toBooleanStrictOrNull()
             val page = call.request.queryParameters["page"]?.toIntOrNull()?.coerceAtLeast(1) ?: 1
             val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull()?.coerceIn(1, 100) ?: 20
-            val all = studentRepository.findAll().filter { (search.isBlank() || it.fullName.lowercase().contains(search) || it.id.lowercase().contains(search)) && (active == null || it.isActive == active) }
+            val all = studentRepository.findAll().filter { (allowed == null || it.classId in allowed) && (search.isBlank() || it.fullName.lowercase().contains(search) || it.id.lowercase().contains(search)) && (active == null || it.isActive == active) }
             val from = ((page - 1) * pageSize).coerceAtMost(all.size); val to = (from + pageSize).coerceAtMost(all.size)
             call.respond(PagedResponse(all.subList(from, to), page, pageSize, all.size))
         }
         get("/students/{id}") {
-            requireUser() ?: return@get
+            val user = requireUser() ?: return@get
             val student = studentRepository.findById(call.parameters["id"].orEmpty())
-            if (student == null) call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")) else call.respond(student)
+            if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@get }
+            if (user.role == "MESIMDHENES") {
+                val teacherId = authService.teacherIdFor(bearerToken().orEmpty())
+                if (teacherId == null || student.classId !in classesForTeacher(teacherId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Ky nxënës nuk është pjesë e ngarkesës së mësimdhënësit.")); return@get }
+            }
+            call.respond(student)
         }
         post("/students") {
             requireWriteUser() ?: return@post
@@ -92,33 +103,49 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
         }
         get("/grades") {
             val user = requireUser() ?: return@get
-            val teacherId = if (user.role == "MESIMDHENES") "M001" else call.request.queryParameters["teacherId"]?.trim()
+            val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else call.request.queryParameters["teacherId"]?.trim()
+            if (user.role == "MESIMDHENES" && teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@get }
             val classId = call.request.queryParameters["classId"]?.trim(); val studentId = call.request.queryParameters["studentId"]?.trim()
+            if (user.role == "MESIMDHENES" && classId != null && !teacherHasClass(teacherId!!, classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje në këtë klasë.")); return@get }
             val studentIds = classId?.let { value -> studentRepository.findAll().filter { it.classId == value }.map { it.id }.toSet() }
             call.respond(gradeRepository.findAll(studentId, teacherId).filter { studentIds == null || it.studentId in studentIds })
         }
         post("/grades") {
             val user = requireWriteUser() ?: return@post; val request = call.receive<GradeRequest>(); validateGrade(request)?.let { call.respond(HttpStatusCode.BadRequest, it); return@post }
-            if (user.role == "MESIMDHENES" && request.teacherId != "M001") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Mësimdhënësi mund të regjistrojë vetëm vlerësimet e veta.")); return@post }
-            if (studentRepository.findById(request.studentId) == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@post }
-            val grade = GradeDto("G-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, request.teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
+            val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else request.teacherId
+            if (teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@post }
+            val student = studentRepository.findById(request.studentId)
+            if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@post }
+            if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të regjistroni vlerësim për këtë nxënës.")); return@post }
+            val grade = GradeDto("G-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
             call.respond(HttpStatusCode.Created, gradeRepository.save(grade))
         }
         get("/absences") {
             val user = requireUser() ?: return@get
-            val teacherId = if (user.role == "MESIMDHENES") "M001" else call.request.queryParameters["teacherId"]?.trim()
-            call.respond(absenceRepository.findAll(call.request.queryParameters["studentId"]?.trim(), teacherId))
+            val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else call.request.queryParameters["teacherId"]?.trim()
+            if (user.role == "MESIMDHENES" && teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@get }
+            val studentId = call.request.queryParameters["studentId"]?.trim()
+            if (user.role == "MESIMDHENES" && studentId != null) {
+                val student = studentRepository.findById(studentId)
+                if (student == null || !teacherHasClass(teacherId!!, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje te ky nxënës.")); return@get }
+            }
+            call.respond(absenceRepository.findAll(studentId, teacherId))
         }
         post("/absences") {
             val user = requireWriteUser() ?: return@post; val request = call.receive<AbsenceRequest>(); validateAbsence(request)?.let { call.respond(HttpStatusCode.BadRequest, it); return@post }
-            if (user.role == "MESIMDHENES" && request.teacherId != "M001") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Mësimdhënësi mund të regjistrojë vetëm mungesat e veta.")); return@post }
-            if (studentRepository.findById(request.studentId) == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@post }
-            val absence = AbsenceDto("A-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, request.teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
+            val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else request.teacherId
+            if (teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@post }
+            val student = studentRepository.findById(request.studentId)
+            if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@post }
+            if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të regjistroni mungesë për këtë nxënës.")); return@post }
+            val absence = AbsenceDto("A-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
             call.respond(HttpStatusCode.Created, absenceRepository.save(absence))
         }
     }
 }
 
+private fun teacherHasClass(teacherId: String, classId: String): Boolean = classesForTeacher(teacherId).contains(classId)
+private fun classesForTeacher(teacherId: String): Set<String> = if (teacherId == "M001") setOf("C03", "C04") else emptySet()
 private suspend fun io.ktor.server.application.ApplicationCall.requireUser(): UserDto? { val user = authService.userFor(bearerToken().orEmpty()); if (user == null) respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return user }
 private suspend fun io.ktor.server.application.ApplicationCall.requireWriteUser(): UserDto? { val user = requireUser() ?: return null; if (user.role !in setOf("ADMINISTRATOR", "DREJTOR", "MESIMDHENES")) { respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni të drejtë për këtë veprim.")); return null }; return user }
 private fun io.ktor.server.application.ApplicationCall.bearerToken(): String? = request.headers["Authorization"]?.removePrefix("Bearer ")?.takeIf { it.isNotBlank() }

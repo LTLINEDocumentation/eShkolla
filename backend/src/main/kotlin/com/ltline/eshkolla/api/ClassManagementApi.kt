@@ -29,16 +29,20 @@ fun Application.configureClassManagementApi(authService: AuthService) {
                     return@put
                 }
                 try {
-                    val updated = Database.connection().use { c ->
-                        c.prepareStatement("UPDATE classes SET name=?, grade_level=? WHERE id=?").use { ps ->
+                    Database.connection().use { c ->
+                        if (duplicateClass(c, name, req.gradeLevel, id)) {
+                            call.respond(HttpStatusCode.Conflict, ApiError("CLASS_ALREADY_EXISTS", "Kjo klasë/paralele me këtë nivel ekziston tashmë."))
+                            return@use
+                        }
+                        val updated = c.prepareStatement("UPDATE classes SET name=?, grade_level=? WHERE id=? AND active=TRUE").use { ps ->
                             ps.setString(1, name)
                             ps.setInt(2, req.gradeLevel)
                             ps.setString(3, id)
                             ps.executeUpdate()
                         }
+                        if (updated == 0) call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Klasa nuk u gjet."))
+                        else call.respond(mapOf("id" to id, "name" to name, "gradeLevel" to req.gradeLevel))
                     }
-                    if (updated == 0) call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Klasa nuk u gjet."))
-                    else call.respond(mapOf("id" to id, "name" to name, "gradeLevel" to req.gradeLevel))
                 } catch (_: SQLException) {
                     call.respond(HttpStatusCode.Conflict, ApiError("CLASS_UPDATE_FAILED", "Klasa nuk mund të rregullohet."))
                 }
@@ -89,6 +93,14 @@ private suspend fun requireClassAdmin(call: io.ktor.server.application.Applicati
     }
     return true
 }
+
+private fun duplicateClass(connection: java.sql.Connection, name: String, gradeLevel: Int, excludeId: String): Boolean =
+    connection.prepareStatement("SELECT 1 FROM classes WHERE LOWER(TRIM(name))=LOWER(TRIM(?)) AND grade_level=? AND id<>? AND active=TRUE LIMIT 1").use { ps ->
+        ps.setString(1, name)
+        ps.setInt(2, gradeLevel)
+        ps.setString(3, excludeId)
+        ps.executeQuery().use { it.next() }
+    }
 
 private fun count(connection: java.sql.Connection, sql: String, id: String): Int =
     connection.prepareStatement(sql).use { ps ->

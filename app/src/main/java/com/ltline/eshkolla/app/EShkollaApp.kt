@@ -2,9 +2,11 @@ package com.ltline.eshkolla.app
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.ltline.eshkolla.domain.auth.AuthState
 import com.ltline.eshkolla.features.absences.AbsenceScreen
 import com.ltline.eshkolla.features.auth.LoginScreen
@@ -21,7 +23,9 @@ private object Routes {
     const val STUDENTS = "students"
     const val CLASSES = "classes"
     const val GRADES = "grades"
+    const val GRADE_FOR_STUDENT = "grades/{studentId}"
     const val ABSENCES = "absences"
+    const val ABSENCE_FOR_STUDENT = "absences/{studentId}"
 }
 
 @Composable
@@ -31,11 +35,8 @@ fun EShkollaApp() {
 
     NavHost(navController = navController, startDestination = Routes.LOGIN) {
         composable(Routes.LOGIN) {
-            LoginScreen(
-                state = authViewModel.state.value,
-                onLogin = authViewModel::login,
-                onLoginSuccess = { navController.navigate(Routes.DASHBOARD) { popUpTo(Routes.LOGIN) { inclusive = true } } }
-            )
+            LoginScreen(state = authViewModel.state.value, onLogin = authViewModel::login,
+                onLoginSuccess = { navController.navigate(Routes.DASHBOARD) { popUpTo(Routes.LOGIN) { inclusive = true } } })
         }
         composable(Routes.DASHBOARD) {
             val user = (authViewModel.state.value as? AuthState.LoggedIn)?.user
@@ -49,21 +50,21 @@ fun EShkollaApp() {
             })
         }
         composable(Routes.STUDENTS) {
-            val studentViewModel: StudentViewModel = viewModel()
-            StudentScreen(viewModel = studentViewModel, onBack = { navController.popBackStack() })
+            val vm: StudentViewModel = viewModel()
+            StudentScreen(viewModel = vm, onBack = { navController.popBackStack() })
         }
         composable(Routes.CLASSES) {
-            TeacherClassesScreen(
-                onBack = { navController.popBackStack() },
-                onGrades = { navController.navigate(Routes.GRADES) },
-                onAbsences = { navController.navigate(Routes.ABSENCES) }
-            )
+            TeacherClassesScreen(onBack = { navController.popBackStack() },
+                onGrades = { id -> navController.navigate("grades/$id") },
+                onAbsences = { id -> navController.navigate("absences/$id") })
         }
-        composable(Routes.GRADES) {
-            GradeScreen(onBack = { navController.popBackStack() })
+        composable(Routes.GRADES) { GradeScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.GRADE_FOR_STUDENT, arguments = listOf(navArgument("studentId") { type = NavType.StringType })) {
+            GradeScreen(onBack = { navController.popBackStack() }, studentId = it.arguments?.getString("studentId"))
         }
-        composable(Routes.ABSENCES) {
-            AbsenceScreen(onBack = { navController.popBackStack() })
+        composable(Routes.ABSENCES) { AbsenceScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.ABSENCE_FOR_STUDENT, arguments = listOf(navArgument("studentId") { type = NavType.StringType })) {
+            AbsenceScreen(onBack = { navController.popBackStack() }, studentId = it.arguments?.getString("studentId"))
         }
     }
 }

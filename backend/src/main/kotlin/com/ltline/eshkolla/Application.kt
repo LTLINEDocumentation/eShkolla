@@ -1,5 +1,6 @@
 package com.ltline.eshkolla
 
+import com.ltline.eshkolla.api.configureAdminSchoolApi
 import com.ltline.eshkolla.api.configureManagementApi
 import com.ltline.eshkolla.api.configureRoleApi
 import com.ltline.eshkolla.api.configureRouting
@@ -12,7 +13,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.calllogging.CallLogging
+import io.ktor.server.plugins.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.http.content.staticFiles
@@ -38,6 +39,7 @@ fun Application.module() {
     val authService = AuthService()
     configureRoleApi(authService)
     configureManagementApi(authService)
+    configureAdminSchoolApi(authService)
     configureSchoolOperationsApi(authService)
     routing {
         get("/") { call.respondFile(File("/app/web/index.html")) }

@@ -20,60 +20,27 @@ import com.ltline.eshkolla.features.students.StudentScreen
 import com.ltline.eshkolla.features.students.StudentViewModel
 
 private object Routes {
-    const val LOGIN = "login"
-    const val DASHBOARD = "dashboard"
-    const val STUDENTS = "students"
-    const val CLASSES = "classes"
-    const val GRADES = "grades"
-    const val GRADE_FOR_STUDENT = "grades/{studentId}"
-    const val ABSENCES = "absences"
-    const val ABSENCE_FOR_STUDENT = "absences/{studentId}"
-    const val MANAGEMENT = "management/{section}"
+    const val LOGIN = "login"; const val DASHBOARD = "dashboard"; const val STUDENTS = "students"; const val CLASSES = "classes"; const val GRADES = "grades"; const val GRADE_FOR_STUDENT = "grades/{studentId}"; const val ABSENCES = "absences"; const val ABSENCE_FOR_STUDENT = "absences/{studentId}"; const val MANAGEMENT = "management/{section}"
 }
 
 @Composable
 fun EShkollaApp() {
-    val navController = rememberNavController()
-    val authViewModel: RealAuthViewModel = viewModel()
-
+    val navController = rememberNavController(); val authViewModel: RealAuthViewModel = viewModel()
     NavHost(navController = navController, startDestination = Routes.LOGIN) {
-        composable(Routes.LOGIN) {
-            LoginScreen(state = authViewModel.state.value, onLogin = authViewModel::login,
-                onLoginSuccess = { navController.navigate(Routes.DASHBOARD) { popUpTo(Routes.LOGIN) { inclusive = true } } })
-        }
+        composable(Routes.LOGIN) { LoginScreen(state = authViewModel.state.value, onLogin = authViewModel::login, onLoginSuccess = { navController.navigate(Routes.DASHBOARD) { popUpTo(Routes.LOGIN) { inclusive = true } } }) }
         composable(Routes.DASHBOARD) {
             val user = (authViewModel.state.value as? AuthState.LoggedIn)?.user
-            DashboardScreen(user = user, onModuleClick = { module ->
-                when (module) {
-                    "students" -> navController.navigate(Routes.STUDENTS)
-                    "classes" -> if (user?.role == UserRole.ADMINISTRATOR || user?.role == UserRole.DREJTOR) navController.navigate("management/classes") else navController.navigate(Routes.CLASSES)
-                    "teachers" -> navController.navigate("management/teachers")
-                    "users" -> navController.navigate("management/users")
-                    "grades" -> navController.navigate(Routes.GRADES)
-                    "absences" -> navController.navigate(Routes.ABSENCES)
-                }
-            })
+            DashboardScreen(user = user, onModuleClick = { module -> when (module) { "students" -> navController.navigate(Routes.STUDENTS); "classes" -> navController.navigate(Routes.CLASSES); "grades" -> navController.navigate(Routes.GRADES); "absences" -> navController.navigate(Routes.ABSENCES); "teachers" -> navController.navigate("management/teachers"); "users" -> navController.navigate("management/users") } })
         }
-        composable(Routes.STUDENTS) {
-            val vm: StudentViewModel = viewModel()
-            StudentScreen(viewModel = vm, onBack = { navController.popBackStack() })
+        composable(Routes.MANAGEMENT, arguments = listOf(navArgument("section") { type = NavType.StringType })) { backStack ->
+            val user = (authViewModel.state.value as? AuthState.LoggedIn)?.user ?: UserRole.NXENES
+            ManagementScreen(role = user.role, section = backStack.arguments?.getString("section").orEmpty(), onBack = { navController.popBackStack() })
         }
-        composable(Routes.CLASSES) {
-            TeacherClassesScreen(onBack = { navController.popBackStack() },
-                onGrades = { id -> navController.navigate("grades/$id") },
-                onAbsences = { id -> navController.navigate("absences/$id") })
-        }
-        composable(Routes.MANAGEMENT, arguments = listOf(navArgument("section") { type = NavType.StringType })) {
-            val user = (authViewModel.state.value as? AuthState.LoggedIn)?.user
-            ManagementScreen(role = user?.role ?: UserRole.NXENES, section = it.arguments?.getString("section").orEmpty(), onBack = { navController.popBackStack() })
-        }
+        composable(Routes.STUDENTS) { val vm: StudentViewModel = viewModel(); StudentScreen(viewModel = vm, onBack = { navController.popBackStack() }) }
+        composable(Routes.CLASSES) { TeacherClassesScreen(onBack = { navController.popBackStack() }, onGrades = { id -> navController.navigate("grades/$id") }, onAbsences = { id -> navController.navigate("absences/$id") }) }
         composable(Routes.GRADES) { GradeScreen(onBack = { navController.popBackStack() }) }
-        composable(Routes.GRADE_FOR_STUDENT, arguments = listOf(navArgument("studentId") { type = NavType.StringType })) {
-            GradeScreen(onBack = { navController.popBackStack() }, studentId = it.arguments?.getString("studentId"))
-        }
+        composable(Routes.GRADE_FOR_STUDENT, arguments = listOf(navArgument("studentId") { type = NavType.StringType })) { GradeScreen(onBack = { navController.popBackStack() }, studentId = it.arguments?.getString("studentId")) }
         composable(Routes.ABSENCES) { AbsenceScreen(onBack = { navController.popBackStack() }) }
-        composable(Routes.ABSENCE_FOR_STUDENT, arguments = listOf(navArgument("studentId") { type = NavType.StringType })) {
-            AbsenceScreen(onBack = { navController.popBackStack() }, studentId = it.arguments?.getString("studentId"))
-        }
+        composable(Routes.ABSENCE_FOR_STUDENT, arguments = listOf(navArgument("studentId") { type = NavType.StringType })) { AbsenceScreen(onBack = { navController.popBackStack() }, studentId = it.arguments?.getString("studentId")) }
     }
 }

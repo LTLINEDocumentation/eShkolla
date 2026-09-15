@@ -1,6 +1,7 @@
 package com.ltline.eshkolla
 
 import com.ltline.eshkolla.api.configureAdminSchoolApi
+import com.ltline.eshkolla.api.configureAdminAssignmentApi
 import com.ltline.eshkolla.api.configureClassManagementApi
 import com.ltline.eshkolla.api.configureManagementApi
 import com.ltline.eshkolla.api.configureRoleApi
@@ -41,6 +42,7 @@ fun Application.module() {
     configureRoleApi(authService)
     configureManagementApi(authService)
     configureAdminSchoolApi(authService)
+    configureAdminAssignmentApi(authService)
     configureClassManagementApi(authService)
     configureSchoolOperationsApi(authService)
     routing {

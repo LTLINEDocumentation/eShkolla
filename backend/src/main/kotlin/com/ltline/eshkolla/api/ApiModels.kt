@@ -36,7 +36,8 @@ data class StudentDto(
 data class StudentRequest(
     val fullName: String,
     val classId: String,
-    val birthDate: String
+    val birthDate: String,
+    val isActive: Boolean = true
 )
 
 @Serializable

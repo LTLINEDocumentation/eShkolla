@@ -7,10 +7,6 @@ plugins {
 group = "com.ltline.eshkolla"
 version = "0.1.0"
 
-repositories {
-    mavenCentral()
-}
-
 val ktorVersion = "3.0.2"
 
 application {

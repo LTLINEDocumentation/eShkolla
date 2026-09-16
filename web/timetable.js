@@ -1,0 +1,35 @@
+const _adminModulesBeforeTimetable=window.adminModules;
+const _baseModulesBeforeTimetable=window.baseModules;
+const _openModuleBeforeTimetable=window.openModule;
+const weekdayNames={1:'E hënë',2:'E martë',3:'E mërkurë',4:'E enjte',5:'E premte',6:'E shtunë',7:'E diel'};
+function timetableModules(base){return [...base.filter(x=>x[0]!=='timetable'),['timetable','Orari & pushimet','Orari i shkollës, pauzat dhe pushimi i gjatë']];}
+window.adminModules=()=>timetableModules(_adminModulesBeforeTimetable());
+window.baseModules=()=>timetableModules(_baseModulesBeforeTimetable());
+window.openModule=async function(m){
+  if(m!=='timetable') return _openModuleBeforeTimetable(m);
+  currentModule='timetable';$('modules').classList.add('hidden');$('moduleView').classList.remove('hidden');$('moduleTitle').textContent='Orari & pushimet';$('moduleControls').classList.add('hidden');$('addStudentButton').classList.add('hidden');
+  try{await timetable();}catch(e){$('moduleContent').innerHTML=`<p class="error">${esc(e.message)}</p>`;}
+};
+async function timetable(){
+  const admin=['ADMINISTRATOR','DREJTOR'].includes(currentUser?.role);
+  const schools=admin?await api('/api/v1/management/schools'):[];
+  const schoolOptions=schools.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  const settings=await api('/api/v1/management/timetable-settings');
+  const data=await api('/api/v1/timetable');
+  const periods=data.periods||[];
+  const rows=periods.map(p=>`<tr><td>${p.lessonNumber}</td><td><strong>${esc(p.startTime)} – ${esc(p.endTime)}</strong></td><td>${p.breakAfterMinutes?`${esc(p.breakAfterMinutes)} min`: '—'}</td><td>${p.breakTypeAfter==='PUSHIM_I_GJATE'?'Pushim i gjatë':p.breakTypeAfter==='PAUZE'?'Pauzë':'—'}</td></tr>`).join('');
+  $('moduleContent').innerHTML=`
+    ${admin?`<div class="card" style="margin-bottom:16px;padding:18px"><div class="section-title"><div><p class="eyebrow">Konfigurimi</p><h3>Oraret e ditës mësimore</h3></div></div><form id="timetableSettingsForm" class="form-grid">
+      ${schools.length?`<label>Shkolla<select name="schoolId"><option value="">Orari i përgjithshëm</option>${schoolOptions}</select></label>`:''}
+      ${field('firstLessonStart','Fillimi i orës së parë','time',`required value="${esc(settings.firstLessonStart)}"`)}
+      ${field('lessonDurationMinutes','Kohëzgjatja e një ore (minuta)','number',`min="20" max="120" required value="${settings.lessonDurationMinutes}"`)}
+      ${field('shortBreakMinutes','Pauza ndërmjet orëve (minuta)','number',`min="0" max="30" required value="${settings.shortBreakMinutes}"`)}
+      ${field('longBreakAfterLesson','Pushimi i gjatë pas orës','number',`min="1" max="${settings.lessonsPerDay}" required value="${settings.longBreakAfterLesson}"`)}
+      ${field('longBreakMinutes','Kohëzgjatja e pushimit të gjatë (minuta)','number',`min="0" max="90" required value="${settings.longBreakMinutes}"`)}
+      ${field('lessonsPerDay','Numri i orëve në ditë','number',`min="1" max="12" required value="${settings.lessonsPerDay}"`)}
+      <div class="form-actions"><button type="submit" class="primary">Ruaj orarin</button></div><p id="timetableError" class="error"></p></form></div>`:''}
+    <div class="table-wrap"><table><thead><tr><th>Ora</th><th>Koha</th><th>Pauza</th><th>Tipi</th></tr></thead><tbody>${rows||`<tr><td colspan="4" class="empty-state">Nuk ka orë të konfiguruara.</td></tr>`}</tbody></table></div>
+    <div class="card" style="margin-top:16px;padding:18px"><p class="eyebrow">Parimi i orarit</p><p class="muted">Sistemi llogarit automatikisht fillimin dhe mbarimin e çdo ore. Pas çdo ore vendoset pauza e shkurtër, ndërsa pas orës së përcaktuar vendoset pushimi i gjatë.</p></div>`;
+  $('resultCount').textContent=`${periods.length} orë mësimore të llogaritura`;
+  if(admin){const form=$('timetableSettingsForm');if(form){form.onsubmit=async e=>{e.preventDefault();try{const f=new FormData(form);await api('/api/v1/management/timetable-settings',{method:'PUT',body:JSON.stringify({schoolId:f.get('schoolId')||null,firstLessonStart:f.get('firstLessonStart'),lessonDurationMinutes:Number(f.get('lessonDurationMinutes')),shortBreakMinutes:Number(f.get('shortBreakMinutes')),longBreakAfterLesson:Number(f.get('longBreakAfterLesson')),longBreakMinutes:Number(f.get('longBreakMinutes')),lessonsPerDay:Number(f.get('lessonsPerDay')),active:true})});await timetable();}catch(err){$('timetableError').textContent=err.message}}}}
+}

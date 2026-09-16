@@ -11,6 +11,7 @@ import com.ltline.eshkolla.api.configureRouting
 import com.ltline.eshkolla.api.configureSchoolOperationsApi
 import com.ltline.eshkolla.api.configureTimetableApi
 import com.ltline.eshkolla.api.configureTeacherScheduleCodeApi
+import com.ltline.eshkolla.api.configureTimetableAssignmentApi
 import com.ltline.eshkolla.api.configureStatusPages
 import com.ltline.eshkolla.auth.AuthService
 import com.ltline.eshkolla.db.ClassUniquenessMigration
@@ -57,5 +58,6 @@ fun Application.module(){
  configureSchoolOperationsApi(authService)
  configureTimetableApi(authService)
  configureTeacherScheduleCodeApi(authService)
+ configureTimetableAssignmentApi(authService)
  routing{get("/"){call.respondFile(File("/app/web/index-admin.html"))};staticFiles("/",File("/app/web"))}
 }

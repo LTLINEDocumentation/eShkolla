@@ -7,18 +7,22 @@ import java.util.UUID
 
 /**
  * Plotëson vetëm pjesët që mungojnë për mësimdhënësit ekzistues.
- * Nuk ndryshon llogaritë që ekzistojnë dhe nuk ruan fjalëkalimin fillestar në tekst të thjeshtë.
- *
- * Standardi fillestar:
- * username = emri.mbiemri
- * password = iniciali i emrit + iniciali i mbiemrit + 12345678
+ * Nuk ndryshon llogaritë/lidhjet ekzistuese dhe nuk ruan fjalëkalimin fillestar në tekst të thjeshtë.
  */
 object TeacherAccountProvisioningMigration {
     private const val DEFAULT_SUFFIX = "12345678"
 
+    private val defaultSubjects = listOf(
+        "Gjuhë shqipe", "Gjuhë angleze", "Kimi", "TIK", "Matematikë",
+        "Histori", "Gjeografi", "Fizikë", "Edukatë figurative", "Biologji",
+        "Edukatë fizike", "Gjuhë gjermane", "Edukatë muzikore"
+    )
+
     fun run(connection: Connection) {
         connection.autoCommit = false
         try {
+            registerMissingSubjects(connection)
+
             connection.prepareStatement(
                 "SELECT id,user_id,full_name FROM teachers WHERE active=TRUE ORDER BY full_name"
             ).use { ps ->
@@ -27,7 +31,7 @@ object TeacherAccountProvisioningMigration {
                         val teacherId = rs.getString("id")
                         val existingUserId = rs.getString("user_id")
                         val fullName = rs.getString("full_name").trim()
-                        val userId = existingUserId ?: provisionUser(connection, teacherId, fullName)
+                        val userId = existingUserId ?: findOrProvisionUser(connection, teacherId, fullName)
                         if (userId != null) {
                             ensureTeacherSubjectRelations(connection, teacherId)
                         }
@@ -35,8 +39,6 @@ object TeacherAccountProvisioningMigration {
                 }
             }
 
-            // teacher_classes është burimi i klasave të caktuara; teacher_subjects duhet
-            // të jetë lidhja e plotë mësimdhënës + lëndë + paralele.
             connection.prepareStatement(
                 "INSERT INTO teacher_classes(teacher_id,class_id) " +
                     "SELECT teacher_id,class_id FROM teacher_subjects " +
@@ -52,19 +54,46 @@ object TeacherAccountProvisioningMigration {
         }
     }
 
-    private fun provisionUser(connection: Connection, teacherId: String, fullName: String): String? {
+    private fun registerMissingSubjects(connection: Connection) {
+        connection.prepareStatement(
+            "INSERT INTO subjects(id,name,active) VALUES(?,?,TRUE) " +
+                "ON CONFLICT (name) DO NOTHING"
+        ).use { ps ->
+            for (subject in defaultSubjects) {
+                ps.setString(1, UUID.nameUUIDFromBytes(("subject:$subject").toByteArray()).toString())
+                ps.setString(2, subject)
+                ps.addBatch()
+            }
+            ps.executeBatch()
+        }
+    }
+
+    private fun findOrProvisionUser(connection: Connection, teacherId: String, fullName: String): String? {
         val parts = fullName.split(Regex("\\s+")).filter { it.isNotBlank() }
         if (parts.size < 2) return null
 
         val first = parts.first()
         val last = parts.last()
-        val usernameBase = "${normalize(first)}.${normalize(last)}".lowercase()
-        if (usernameBase.length < 3) return null
+        val username = "${normalize(first)}.${normalize(last)}".lowercase()
 
-        val username = uniqueUsername(connection, usernameBase)
-        // Mos krijojmë llogari të dyta për emra që përplasen me një user ekzistues.
-        if (username != usernameBase) return null
+        connection.prepareStatement("SELECT id FROM users WHERE lower(username)=lower(?) LIMIT 1").use { ps ->
+            ps.setString(1, username)
+            ps.executeQuery().use { rs ->
+                if (rs.next()) {
+                    val existingId = rs.getString("id")
+                    connection.prepareStatement(
+                        "UPDATE teachers SET user_id=? WHERE id=? AND user_id IS NULL"
+                    ).use { update ->
+                        update.setString(1, existingId)
+                        update.setString(2, teacherId)
+                        update.executeUpdate()
+                    }
+                    return existingId
+                }
+            }
+        }
 
+        if (username.length < 3) return null
         val password = "${first.first().uppercaseChar()}${last.first().uppercaseChar()}$DEFAULT_SUFFIX"
         val userId = UUID.randomUUID().toString()
         val hash = PasswordHasher.create(password)
@@ -86,16 +115,6 @@ object TeacherAccountProvisioningMigration {
             ps.executeUpdate()
         }
         return userId
-    }
-
-    private fun uniqueUsername(connection: Connection, base: String): String {
-        connection.prepareStatement("SELECT id FROM users WHERE username=? LIMIT 1").use { ps ->
-            ps.setString(1, base)
-            ps.executeQuery().use { rs ->
-                if (!rs.next()) return base
-            }
-        }
-        return base
     }
 
     private fun ensureTeacherSubjectRelations(connection: Connection, teacherId: String) {

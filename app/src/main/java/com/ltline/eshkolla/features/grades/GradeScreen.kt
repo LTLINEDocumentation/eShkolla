@@ -1,23 +1,26 @@
 package com.ltline.eshkolla.features.grades
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,120 +29,179 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ltline.eshkolla.data.school.ApiClassRepository
+import com.ltline.eshkolla.data.school.TeacherClass
 import com.ltline.eshkolla.domain.model.Grade
+import com.ltline.eshkolla.domain.model.Student
 import com.ltline.eshkolla.presentation.teacher.TeacherAssessmentViewModel
+
+private data class AssessmentColumn(val key: String, val title: String)
+
+private val assessmentColumns = listOf(
+    AssessmentColumn("TEST_1", "Testi 1"),
+    AssessmentColumn("TEST_2", "Testi 2"),
+    AssessmentColumn("SEM_1", "Nota 1 e gjysmëvitit"),
+    AssessmentColumn("TEST_3", "Testi 3"),
+    AssessmentColumn("TEST_4", "Testi 4"),
+    AssessmentColumn("SEM_2", "Nota 2 e gjysmëvitit"),
+    AssessmentColumn("FINAL", "Nota Përfundimtare")
+)
 
 @Composable
 fun GradeScreen(onBack: () -> Unit, studentId: String? = null, viewModel: TeacherAssessmentViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    var selectedStudent by remember(studentId, state.students) { mutableStateOf(state.students.firstOrNull { it.id == studentId }) }
-    var value by remember { mutableStateOf("") }
-    var period by remember { mutableStateOf("Periudha I") }
-    var note by remember { mutableStateOf("") }
-    var search by remember { mutableStateOf("") }
+    val classRepository = remember { ApiClassRepository() }
+    var classes by remember { mutableStateOf<List<TeacherClass>>(emptyList()) }
+    var selectedClass by remember { mutableStateOf<TeacherClass?>(null) }
+    var classStudents by remember { mutableStateOf<List<Student>>(emptyList()) }
+    var loadingClassData by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var editingGrade by remember { mutableStateOf<Grade?>(null) }
-    var deletingGrade by remember { mutableStateOf<Grade?>(null) }
+    var selectedCell by remember { mutableStateOf<Pair<Student, AssessmentColumn>?>(null) }
+    val horizontalScroll = rememberScrollState()
 
-    val availableStudents = if (studentId != null) state.students.filter { it.id == studentId } else state.students
-    val filteredStudents = availableStudents.filter { search.isBlank() || it.fullName.contains(search.trim(), true) || it.id.contains(search.trim(), true) }
-    val visibleGrades = if (studentId != null) state.grades.filter { it.studentId == studentId } else state.grades
+    LaunchedEffect(Unit) {
+        runCatching { classRepository.getMyClasses() }
+            .onSuccess { loaded ->
+                classes = loaded
+                if (studentId != null) {
+                    val student = state.students.firstOrNull { it.id == studentId }
+                    val matching = loaded.firstOrNull { it.id == student?.classId }
+                    if (matching != null) selectedClass = matching
+                }
+            }
+            .onFailure { error = it.message ?: "Gabim gjatë ngarkimit të klasave." }
+    }
+
+    LaunchedEffect(selectedClass?.id) {
+        val classId = selectedClass?.id ?: return@LaunchedEffect
+        loadingClassData = true
+        runCatching { classRepository.getStudents(classId) }
+            .onSuccess { classStudents = it.filter { student -> student.isActive }.sortedBy { student -> student.fullName.lowercase() } }
+            .onFailure { error = it.message ?: "Gabim gjatë ngarkimit të nxënësve." }
+        loadingClassData = false
+    }
+
+    val students = if (studentId != null) classStudents.filter { it.id == studentId } else classStudents
 
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedButton(onClick = onBack) { Text("← Paneli") }
-        Text("Regjistri i notave", style = MaterialTheme.typography.headlineMedium)
-        Text("Mësimdhënës: Leonard Tahiraj • Matematikë")
-        if (selectedStudent == null) {
-            Text("Zgjidhni nxënësin", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), label = { Text("Kërko nxënësin") }, singleLine = true)
-            LazyColumn(Modifier.fillMaxWidth().weight(1f, false), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(filteredStudents) { student ->
-                    Card(Modifier.fillMaxWidth().clickable { selectedStudent = student; error = null }) {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column { Text(student.fullName, style = MaterialTheme.typography.titleMedium); Text("ID: ${student.id} • Klasa: ${student.classId}") }
-                            Text("Zgjidh")
+        Text("Notat", style = MaterialTheme.typography.headlineMedium)
+        Text("Zgjidh klasën nga klasat që i ke në kompetencë.")
+
+        if (selectedClass == null) {
+            Text("Klasat e mia", style = MaterialTheme.typography.titleLarge)
+            if (classes.isEmpty() && !state.isLoading) {
+                Text("Nuk ka klasa të caktuara për këtë mësimdhënës.")
+            }
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(classes) { schoolClass ->
+                    Card(Modifier.fillMaxWidth().clickable { selectedClass = schoolClass; error = null }) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text(schoolClass.name, style = MaterialTheme.typography.titleLarge)
+                            Text("Niveli: ${schoolClass.gradeLevel} • ${schoolClass.studentCount} nxënës")
+                            Text("Hap regjistrin e notave →", modifier = Modifier.padding(top = 6.dp))
                         }
                     }
                 }
             }
         } else {
-            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
-                Text("Nxënësi", style = MaterialTheme.typography.labelLarge)
-                Text(selectedStudent!!.fullName, style = MaterialTheme.typography.titleLarge)
-                Text("ID: ${selectedStudent!!.id} • Klasa: ${selectedStudent!!.classId}")
-            } }
-            Text("Regjistroni notën", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value, { value = it.filter(Char::isDigit).take(1) }, Modifier.fillMaxWidth(), label = { Text("Nota 1–5") }, singleLine = true)
-            OutlinedTextField(period, { period = it }, Modifier.fillMaxWidth(), label = { Text("Periudha") }, singleLine = true)
-            OutlinedTextField(note, { note = it }, Modifier.fillMaxWidth(), label = { Text("Shënim / lloji i vlerësimit") }, singleLine = true)
-            Button(onClick = {
-                val grade = value.toIntOrNull()
-                error = when { grade !in 1..5 -> "Nota duhet të jetë nga 1 deri në 5."; period.isBlank() -> "Periudha është e detyrueshme."; else -> null }
-                if (error == null) {
-                    viewModel.saveGrade(Grade("TEMP-${selectedStudent!!.id}-${System.currentTimeMillis()}", selectedStudent!!.id, "MAT", "M001", grade!!, period.trim(), "2026/2027", note.trim().takeIf { it.isNotBlank() }))
-                    value = ""; note = ""
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("Klasa", style = MaterialTheme.typography.labelLarge)
+                    Text(selectedClass!!.name, style = MaterialTheme.typography.titleLarge)
+                    Text("Vlerësimi i nxënësve të kësaj klase")
                 }
-            }, Modifier.fillMaxWidth()) { Text("Ruaj notën") }
-            if (studentId == null) OutlinedButton(onClick = { selectedStudent = null }, Modifier.fillMaxWidth()) { Text("Ndrysho nxënësin") }
-        }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (state.isLoading) Text("Duke ngarkuar të dhënat…")
-        Text("Notat e regjistruara", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(visibleGrades) { grade ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column { Text("${grade.period} • ${grade.note ?: "Vlerësim"}"); Text("Viti: ${grade.academicYear}") }
-                            Text(grade.value.toString(), style = MaterialTheme.typography.headlineSmall)
+            }
+
+            if (loadingClassData) Text("Duke ngarkuar nxënësit…")
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { selectedClass = null; classStudents = emptyList() }) { Text("← Klasat") }
+                Text("${students.size} nxënës", modifier = Modifier.padding(top = 12.dp))
+            }
+
+            Card(Modifier.fillMaxWidth().weight(1f)) {
+                Row(Modifier.horizontalScroll(horizontalScroll)) {
+                    Column(Modifier.width(190.dp)) {
+                        HeaderCell("Emri dhe Mbiemri", Modifier.width(190.dp))
+                        students.forEach { student ->
+                            Row(Modifier.fillMaxWidth()) {
+                                Text(student.fullName, modifier = Modifier.width(190.dp).padding(12.dp), style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { editingGrade = grade }) { Text("Ndrysho") }
-                            TextButton(onClick = { deletingGrade = grade }) { Text("Fshi") }
+                    }
+                    assessmentColumns.forEach { column ->
+                        Column(Modifier.width(130.dp)) {
+                            HeaderCell(column.title, Modifier.width(130.dp))
+                            students.forEach { student ->
+                                val grade = gradeFor(state.grades, student.id, column.key)
+                                Text(
+                                    grade?.value?.toString() ?: "—",
+                                    modifier = Modifier
+                                        .width(130.dp)
+                                        .clickable { selectedCell = student to column }
+                                        .padding(12.dp),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
                         }
                     }
                 }
             }
+            Text("Kliko në një qelizë për të caktuar ose ndryshuar notën 1–5.", style = MaterialTheme.typography.bodySmall)
         }
+
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
 
-    editingGrade?.let { grade ->
-        var editValue by remember(grade.id) { mutableStateOf(grade.value.toString()) }
-        var editPeriod by remember(grade.id) { mutableStateOf(grade.period) }
-        var editNote by remember(grade.id) { mutableStateOf(grade.note.orEmpty()) }
+    selectedCell?.let { (student, column) ->
+        val current = gradeFor(state.grades, student.id, column.key)
         AlertDialog(
-            onDismissRequest = { editingGrade = null },
-            title = { Text("Ndrysho notën") },
+            onDismissRequest = { selectedCell = null },
+            title = { Text("${column.title} • ${student.fullName}") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(editValue, { editValue = it.filter(Char::isDigit).take(1) }, label = { Text("Nota 1–5") }, singleLine = true)
-                    OutlinedTextField(editPeriod, { editPeriod = it }, label = { Text("Periudha") }, singleLine = true)
-                    OutlinedTextField(editNote, { editNote = it }, label = { Text("Shënim") }, singleLine = true)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(if (current == null) "Zgjidh notën" else "Nota aktuale: ${current.value}")
+                    (1..5).forEach { value ->
+                        Button(
+                            onClick = {
+                                val grade = Grade(
+                                    id = current?.id ?: "TEMP-${student.id}-${column.key}-${System.currentTimeMillis()}",
+                                    studentId = student.id,
+                                    subjectId = "MAT",
+                                    teacherId = "M001",
+                                    value = value,
+                                    period = periodFor(column.key),
+                                    academicYear = "2026/2027",
+                                    note = column.title
+                                )
+                                if (current == null) viewModel.saveGrade(grade) else viewModel.updateGrade(grade)
+                                selectedCell = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(value.toString()) }
+                    }
+                    if (current != null) {
+                        TextButton(onClick = { viewModel.deleteGrade(current.id); selectedCell = null }) { Text("Fshi notën") }
+                    }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    val newValue = editValue.toIntOrNull()
-                    if (newValue in 1..5 && editPeriod.isNotBlank()) {
-                        viewModel.updateGrade(grade.copy(value = newValue!!, period = editPeriod.trim(), note = editNote.trim().takeIf { it.isNotBlank() }))
-                        editingGrade = null
-                    }
-                }) { Text("Ruaj") }
-            },
-            dismissButton = { TextButton(onClick = { editingGrade = null }) { Text("Anulo") } }
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { selectedCell = null }) { Text("Anulo") } }
         )
     }
+}
 
-    deletingGrade?.let { grade ->
-        AlertDialog(
-            onDismissRequest = { deletingGrade = null },
-            title = { Text("Fshi notën?") },
-            text = { Text("Kjo notë do të hiqet nga regjistri i nxënësit.") },
-            confirmButton = {
-                TextButton(onClick = { viewModel.deleteGrade(grade.id); deletingGrade = null }) { Text("Fshi") }
-            },
-            dismissButton = { TextButton(onClick = { deletingGrade = null }) { Text("Anulo") } }
-        )
-    }
+@Composable
+private fun HeaderCell(title: String, modifier: Modifier = Modifier) {
+    Text(title, modifier = modifier.padding(10.dp), style = MaterialTheme.typography.labelLarge)
+}
+
+private fun gradeFor(grades: List<Grade>, studentId: String, key: String): Grade? =
+    grades.firstOrNull { it.studentId == studentId && it.note == assessmentColumns.firstOrNull { column -> column.key == key }?.title }
+
+private fun periodFor(key: String): String = when (key) {
+    "SEM_1", "TEST_1", "TEST_2" -> "Periudha I"
+    else -> "Periudha II"
 }

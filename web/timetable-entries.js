@@ -10,8 +10,39 @@ async function timetable(){
   const rows=(data.schedule||[]).map(x=>`<tr><td>${esc(weekdayNames[x.weekday]||x.weekday)}</td><td>${esc(x.startTime)} – ${esc(x.endTime)}</td><td>${esc(className(x.classId))}</td><td>${esc(subjectName(x.subjectId))}</td><td>${esc(teacherName(x.teacherId))}</td><td>${esc(x.room||'—')}</td>${canManage?`<td><div class="section-actions"><button type="button" class="secondary timetable-edit" data-id="${esc(x.id)}">Rregullo</button><button type="button" class="secondary timetable-delete" data-id="${esc(x.id)}">Fshij</button></div></td>`:''}</tr>`).join('');
   const section=document.createElement('div');section.style.marginTop='18px';section.innerHTML=`<div class="section-title"><div><p class="eyebrow">Orari javor</p><h3>Oraret e klasave</h3></div>${canManage?'<button class="primary" id="timetableAdd">+ Shto orë</button>':''}</div><div class="table-wrap"><table><thead><tr><th>Dita</th><th>Koha</th><th>Klasa</th><th>Lënda</th><th>Mësimdhënësi</th><th>Salla</th>${canManage?'<th>Veprime</th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${canManage?7:6}" class="empty-state">Nuk ka orë të regjistruara.</td></tr>`}</tbody></table></div>`;
   $('moduleContent').appendChild(section);
-  if(canManage){$('timetableAdd').onclick=()=>scheduleEntryForm();document.querySelectorAll('.timetable-edit').forEach(b=>b.onclick=()=>{const x=data.schedule.find(v=>v.id===b.dataset.id);if(x)scheduleEntryForm(x)});document.querySelectorAll('.timetable-delete').forEach(b=>b.onclick=()=>deleteScheduleEntry(b.dataset.id));}
+  if(canManage){
+    await renderTimetableMatrix(data,classes);
+    $('timetableAdd').onclick=()=>scheduleEntryForm();
+    document.querySelectorAll('.timetable-edit').forEach(b=>b.onclick=()=>{const x=data.schedule.find(v=>v.id===b.dataset.id);if(x)scheduleEntryForm(x)});
+    document.querySelectorAll('.timetable-delete').forEach(b=>b.onclick=()=>deleteScheduleEntry(b.dataset.id));
+  }
 }
+
+async function renderTimetableMatrix(data,classes){
+  const [codes]=await Promise.all([api('/api/v1/management/timetable-codes')]);
+  const codeByTeacher=new Map(codes.filter(x=>x.teacherId).map(x=>[String(x.teacherId),x.code]));
+  const orderedNames=['VI1','VI2','VII1','VII2','VIII1','VIII2','IX1','IX2'];
+  const orderedClasses=orderedNames.map(name=>classes.find(x=>String(x.name).trim().toUpperCase()===name)).filter(Boolean);
+  const fallbackClasses=classes.filter(x=>!orderedClasses.some(y=>y.id===x.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  const visibleClasses=[...orderedClasses,...fallbackClasses];
+  const periods=data.periods||[];
+  const schedule=data.schedule||[];
+  const bySlot=new Map(schedule.map(x=>[`${x.classId}|${x.weekday}|${x.startTime}|${x.endTime}`,x]));
+  const dayGroups=Array.from({length:5},(_,i)=>i+1).map(day=>{
+    const cols=periods.map(p=>`<th>${p.lessonNumber}</th>`).join('');
+    const body=visibleClasses.map(c=>`<tr><th>${esc(c.name)}</th>${periods.map(p=>{
+      const start=p.startTime,end=p.endTime;const x=bySlot.get(`${c.id}|${day}|${start}|${end}`);const code=x?codeByTeacher.get(String(x.teacherId)):null;
+      return `<td title="${x?esc(`${subjectNameForMatrix(x,codes)} — ${teacherNameForMatrix(x,codes)}`):''}">${x?(code??'—'):'·'}</td>`;
+    }).join('')}</tr>`).join('');
+    return `<div class="table-wrap" style="margin-top:12px"><table class="timetable-matrix"><thead><tr><th>${esc(weekdayNames[day])}</th>${cols}</tr></thead><tbody>${body||`<tr><td colspan="${periods.length+1}" class="empty-state">Nuk ka klasa të regjistruara.</td></tr>`}</tbody></table></div>`;
+  }).join('');
+  const legend=codes.filter(x=>x.displayName||x.teacherId).sort((a,b)=>a.code-b.code).map(x=>`<span style="display:inline-flex;gap:5px;align-items:center;margin:3px 10px 3px 0"><strong>${x.code}</strong> — ${esc(x.displayName||x.teacherId||'')}</span>`).join('');
+  const wrapper=document.createElement('div');wrapper.style.marginTop='22px';wrapper.innerHTML=`<div class="section-title"><div><p class="eyebrow">Korniza e tabelave</p><h3>Klasa → dita → ora → numri i mësimdhënësit</h3><p class="muted">Numri në qelizë është kodi i mësimdhënësit. Rreshtat janë VI1, VI2, VII1, VII2, VIII1, VIII2, IX1, IX2.</p></div></div>${dayGroups}<div class="card" style="margin-top:12px;padding:14px"><p class="eyebrow">Legjenda e kodeve</p><div>${legend||'<span class="muted">Nuk ka kode të caktuara.</span>'}</div></div>`;
+  $('moduleContent').appendChild(wrapper);
+}
+function subjectNameForMatrix(x,codes){return codes.find(c=>c.teacherId===x.teacherId)?.subjectName||''}
+function teacherNameForMatrix(x,codes){return codes.find(c=>c.teacherId===x.teacherId)?.displayName||x.teacherId}
+
 function scheduleEntryForm(existing=null){
   Promise.all([api('/api/v1/management/classes'),api('/api/v1/management/teachers'),api('/api/v1/management/subjects')]).then(([classes,teachers,subjects])=>{
     const opt=(items,value,label)=>items.map(x=>`<option value="${esc(x.id)}" ${String(value)===String(x.id)?'selected':''}>${esc(label(x))}</option>`).join('');

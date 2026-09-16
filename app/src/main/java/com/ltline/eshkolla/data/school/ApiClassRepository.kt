@@ -17,10 +17,40 @@ data class TeacherClass(
     val studentCount: Int
 )
 
+data class TeacherSubject(
+    val id: String,
+    val name: String,
+    val code: String?,
+    val classIds: List<String>
+)
+
 class ApiClassRepository {
     suspend fun getMyClasses(): List<TeacherClass> = parseClasses(request("/api/v1/classes"))
 
     suspend fun getStudents(classId: String): List<Student> = parseStudents(request("/api/v1/classes/$classId/students"))
+
+    suspend fun getMySubjectsForClass(classId: String): List<TeacherSubject> {
+        val root = JSONObject(request("/api/v1/me/data"))
+        val subjects = root.optJSONArray("subjects") ?: return emptyList()
+        return buildList {
+            for (i in 0 until subjects.length()) {
+                val item = subjects.getJSONObject(i)
+                val classIds = item.optJSONArray("classIds")?.let { ids ->
+                    buildList { for (j in 0 until ids.length()) add(ids.getString(j)) }
+                }.orEmpty()
+                if (classId in classIds) {
+                    add(
+                        TeacherSubject(
+                            id = item.getString("id"),
+                            name = item.getString("name"),
+                            code = item.optString("code").takeIf { it.isNotBlank() },
+                            classIds = classIds
+                        )
+                    )
+                }
+            }
+        }
+    }
 
     private fun request(path: String): String {
         val connection = (URL(ApiConfig.baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {

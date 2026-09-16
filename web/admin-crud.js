@@ -2,7 +2,34 @@ function adminActionButtons(kind,id,name){return `<div class="section-actions"><
 function adminTable(headers,rows,addLabel,onAdd){$('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button class="primary" id="dynamicAdd">+ ${esc(addLabel)}</button></div><div class="table-wrap"><table><thead><tr>${headers.map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${r.map(v=>v).join('')}</tr>`).join(''):`<tr><td colspan="${headers.length}" class="empty-state">Nuk ka të dhëna.</td></tr>`}</tbody></table></div>`;$('resultCount').textContent=`${rows.length} rezultate reale`;$('dynamicAdd').onclick=onAdd}
 async function schools(){const d=await api('/api/v1/management/schools');adminTable(['ID','Shkolla','Adresa','Statusi','Veprime'],d.map(x=>[`<td>${esc(x.id)}</td>`,`<td>${esc(x.name)}</td>`,`<td>${esc(x.address||'')}</td>`,`<td>${x.active?'Aktive':'Joaktive'}</td>`,`<td>${adminActionButtons('school',x.id,x.name)}</td>`]),'Shto shkollë',()=>schoolForm())}
 async function subjects(){const d=await api('/api/v1/management/subjects');adminTable(['ID','Lënda','Kodi','Statusi','Veprime'],d.map(x=>[`<td>${esc(x.id)}</td>`,`<td>${esc(x.name)}</td>`,`<td>${esc(x.code||'')}</td>`,`<td>${x.active?'Aktive':'Joaktive'}</td>`,`<td>${adminActionButtons('subject',x.id,x.name)}</td>`]),'Shto lëndë',()=>subjectForm())}
-async function teachers(){const d=await api('/api/v1/management/teachers');adminTable(['ID','Mësimdhënësi','Lënda kryesore','Përdoruesi','Klasa','Statusi','Veprime'],d.map(x=>[`<td>${esc(x.id)}</td>`,`<td>${esc(x.fullName)}</td>`,`<td>${esc(x.subjectId)}</td>`,`<td>${esc(x.username)}</td>`,`<td>${esc((x.classIds||[]).join(', ')||'—')}</td>`,`<td>${x.active?'Aktiv':'Joaktiv'}</td>`,`<td>${adminActionButtons('teacher',x.id,x.fullName)}</td>`]),'Shto mësimdhënës',()=>teacherForm())}
+async function teachers(){
+  const [d,subjects,classes,codes]=await Promise.all([
+    api('/api/v1/management/teachers'),
+    api('/api/v1/management/subjects'),
+    api('/api/v1/management/classes'),
+    api('/api/v1/management/timetable-codes')
+  ]);
+  const subjectMap=new Map(subjects.map(x=>[String(x.id),x.name]));
+  const classMap=new Map(classes.map(x=>[String(x.id),x.name]));
+  const codeMap=new Map(codes.filter(x=>x.teacherId).map(x=>[String(x.teacherId),x.code]));
+  const rows=d.map(x=>{
+    const classNames=(x.classIds||[]).map(id=>classMap.get(String(id))||id);
+    const code=x.scheduleCode??codeMap.get(String(x.id));
+    const status=x.relationStatus||((x.username&&classNames.length&&code)?'OK':'Kontrollo lidhjet');
+    const statusHtml=status==='OK'?'<span class="status">Në rregull</span>':`<span class="status">${esc(status)}</span>`;
+    return [
+      `<td>${esc(x.id)}</td>`,
+      `<td><strong>${esc(x.fullName)}</strong></td>`,
+      `<td>${esc(subjectMap.get(String(x.subjectId))||x.subjectName||x.subjectId)}</td>`,
+      `<td>${esc(x.username||'—')}</td>`,
+      `<td>${classNames.length?classNames.map(esc).join(', '):'—'}</td>`,
+      `<td>${code??'—'}</td>`,
+      `<td>${statusHtml}</td>`,
+      `<td>${adminActionButtons('teacher',x.id,x.fullName)}</td>`
+    ];
+  });
+  adminTable(['ID','Mësimdhënësi','Lënda','Përdoruesi','Klasat / paralelet','Kodi i orarit','Lidhjet','Veprime'],rows,'Shto mësimdhënës',()=>teacherForm());
+}
 async function students(admin=false){const d=await api('/api/v1/management/students');if(!admin){return window.__originalStudents?window.__originalStudents(false):null}adminTable(['ID','Emri','Klasa','Datëlindja','Statusi','Veprime'],d.map(x=>[`<td>${esc(x.id)}</td>`,`<td>${esc(x.fullName)}</td>`,`<td>${esc(x.className)}</td>`,`<td>${esc(x.birthDate)}</td>`,`<td>${x.active?'Aktiv':'Joaktiv'}</td>`,`<td>${adminActionButtons('student',x.id,x.fullName)}</td>`]),'Shto nxënës',()=>studentForm())}
 async function users(){const d=await api('/api/v1/management/users');adminTable(['ID','Përdoruesi','Emri','Roli','Statusi','Veprime'],d.map(x=>[`<td>${esc(x.id)}</td>`,`<td>${esc(x.username)}</td>`,`<td>${esc(x.fullName)}</td>`,`<td>${esc(roles[x.role]||x.role)}</td>`,`<td>${x.active?'Aktiv':'Joaktiv'}</td>`,`<td>${adminActionButtons('user',x.id,x.fullName)}</td>`]),'Krijo përdorues dhe cakto rol',()=>userForm())}
 function adminEdit(kind,id){if(kind==='school')return editSchool(id);if(kind==='subject')return editSubject(id);if(kind==='teacher')return editTeacher(id);if(kind==='student')return editStudent(id);if(kind==='user')return editUser(id)}

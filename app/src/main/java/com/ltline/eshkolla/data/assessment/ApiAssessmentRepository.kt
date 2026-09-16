@@ -16,11 +16,19 @@ import org.json.JSONObject
 class ApiGradeRepository : GradeRepository {
     override suspend fun getGrades(): List<Grade> = parseGrades(request("/api/v1/grades"))
     override suspend fun getGradesByStudent(studentId: String): List<Grade> = parseGrades(request("/api/v1/grades?studentId=${encode(studentId)}"))
+    suspend fun getGradesByClass(classId: String): List<Grade> = parseGrades(request("/api/v1/grades?classId=${encode(classId)}"))
     override suspend fun addGrade(grade: Grade): Grade = parseGrade(request("/api/v1/grades", "POST", gradeBody(grade)))
-    override suspend fun updateGrade(grade: Grade): Grade = throw UnsupportedOperationException("Përditësimi i notës do të aktivizohet me endpoint-in e dedikuar.")
-    override suspend fun deleteGrade(id: String) = throw UnsupportedOperationException("Fshirja e notës do të aktivizohet me endpoint-in e dedikuar.")
+    override suspend fun updateGrade(grade: Grade): Grade = parseGrade(request("/api/v1/grades/${encode(grade.id)}", "PUT", gradeBody(grade)))
+    override suspend fun deleteGrade(id: String) { request("/api/v1/grades/${encode(id)}", "DELETE") }
 
-    private fun gradeBody(g: Grade) = JSONObject().put("studentId", g.studentId).put("subjectId", g.subjectId).put("teacherId", g.teacherId).put("value", g.value).put("period", g.period).put("academicYear", g.academicYear).put("note", g.note)
+    private fun gradeBody(g: Grade) = JSONObject()
+        .put("studentId", g.studentId)
+        .put("subjectId", g.subjectId)
+        .put("teacherId", g.teacherId)
+        .put("value", g.value)
+        .put("period", g.period)
+        .put("academicYear", g.academicYear)
+        .put("note", g.note)
 }
 
 class ApiAbsenceRepository : AbsenceRepository {
@@ -54,6 +62,7 @@ private fun request(path: String, method: String = "GET", body: JSONObject? = nu
 }
 
 private fun parseGrades(response: String): List<Grade> {
+    if (response.isBlank()) return emptyList()
     val array = JSONArray(response)
     return buildList { for (i in 0 until array.length()) add(parseGrade(array.getJSONObject(i).toString())) }
 }
@@ -62,6 +71,7 @@ private fun parseGrade(response: String): Grade {
     return Grade(j.getString("id"), j.getString("studentId"), j.getString("subjectId"), j.getString("teacherId"), j.getInt("value"), j.getString("period"), j.getString("academicYear"), j.optString("note").takeIf { it.isNotBlank() })
 }
 private fun parseAbsences(response: String): List<Absence> {
+    if (response.isBlank()) return emptyList()
     val array = JSONArray(response)
     return buildList { for (i in 0 until array.length()) add(parseAbsence(array.getJSONObject(i).toString())) }
 }

@@ -1,5 +1,7 @@
 package com.ltline.eshkolla.features.grades
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,7 +51,11 @@ private val assessmentColumns = listOf(
 )
 
 @Composable
-fun GradeScreen(onBack: () -> Unit, studentId: String? = null, viewModel: TeacherAssessmentViewModel = viewModel()) {
+fun GradeScreen(
+    onBack: () -> Unit,
+    studentId: String? = null,
+    viewModel: TeacherAssessmentViewModel = viewModel()
+) {
     val state by viewModel.uiState.collectAsState()
     val classRepository = remember { ApiClassRepository() }
     var classes by remember { mutableStateOf<List<TeacherClass>>(emptyList()) }
@@ -65,8 +72,7 @@ fun GradeScreen(onBack: () -> Unit, studentId: String? = null, viewModel: Teache
                 classes = loaded
                 if (studentId != null) {
                     val student = state.students.firstOrNull { it.id == studentId }
-                    val matching = loaded.firstOrNull { it.id == student?.classId }
-                    if (matching != null) selectedClass = matching
+                    selectedClass = loaded.firstOrNull { it.id == student?.classId }
                 }
             }
             .onFailure { error = it.message ?: "Gabim gjatë ngarkimit të klasave." }
@@ -75,31 +81,55 @@ fun GradeScreen(onBack: () -> Unit, studentId: String? = null, viewModel: Teache
     LaunchedEffect(selectedClass?.id) {
         val classId = selectedClass?.id ?: return@LaunchedEffect
         loadingClassData = true
+        error = null
         runCatching { classRepository.getStudents(classId) }
-            .onSuccess { classStudents = it.filter { student -> student.isActive }.sortedBy { student -> student.fullName.lowercase() } }
+            .onSuccess {
+                classStudents = it
+                    .filter(Student::isActive)
+                    .sortedBy { student -> student.fullName.lowercase() }
+            }
             .onFailure { error = it.message ?: "Gabim gjatë ngarkimit të nxënësve." }
         loadingClassData = false
     }
 
     val students = if (studentId != null) classStudents.filter { it.id == studentId } else classStudents
 
-    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(
+        Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         OutlinedButton(onClick = onBack) { Text("← Paneli") }
         Text("Notat", style = MaterialTheme.typography.headlineMedium)
-        Text("Zgjidh klasën nga klasat që i ke në kompetencë.")
 
         if (selectedClass == null) {
+            Text(
+                "Zgjidh klasën nga klasat që i ke në kompetencë.",
+                style = MaterialTheme.typography.bodyLarge
+            )
             Text("Klasat e mia", style = MaterialTheme.typography.titleLarge)
+
             if (classes.isEmpty() && !state.isLoading) {
                 Text("Nuk ka klasa të caktuara për këtë mësimdhënës.")
             }
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+            LazyColumn(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(classes) { schoolClass ->
-                    Card(Modifier.fillMaxWidth().clickable { selectedClass = schoolClass; error = null }) {
+                    Card(
+                        Modifier.fillMaxWidth().clickable {
+                            selectedClass = schoolClass
+                            error = null
+                        }
+                    ) {
                         Column(Modifier.padding(16.dp)) {
                             Text(schoolClass.name, style = MaterialTheme.typography.titleLarge)
                             Text("Niveli: ${schoolClass.gradeLevel} • ${schoolClass.studentCount} nxënës")
-                            Text("Hap regjistrin e notave →", modifier = Modifier.padding(top = 6.dp))
+                            Text(
+                                "Hap regjistrin e notave →",
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
                         }
                     }
                 }
@@ -109,46 +139,55 @@ fun GradeScreen(onBack: () -> Unit, studentId: String? = null, viewModel: Teache
                 Column(Modifier.padding(12.dp)) {
                     Text("Klasa", style = MaterialTheme.typography.labelLarge)
                     Text(selectedClass!!.name, style = MaterialTheme.typography.titleLarge)
-                    Text("Vlerësimi i nxënësve të kësaj klase")
+                    Text("Lista e nxënësve dhe tabela e vlerësimit")
                 }
             }
 
-            if (loadingClassData) Text("Duke ngarkuar nxënësit…")
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { selectedClass = null; classStudents = emptyList() }) { Text("← Klasat") }
-                Text("${students.size} nxënës", modifier = Modifier.padding(top = 12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(onClick = { selectedClass = null; classStudents = emptyList() }) {
+                    Text("← Klasat")
+                }
+                Text("${students.size} nxënës")
             }
 
-            Card(Modifier.fillMaxWidth().weight(1f)) {
-                Row(Modifier.horizontalScroll(horizontalScroll)) {
-                    Column(Modifier.width(190.dp)) {
-                        HeaderCell("Emri dhe Mbiemri", Modifier.width(190.dp))
-                        students.forEach { student ->
-                            Row(Modifier.fillMaxWidth()) {
-                                Text(student.fullName, modifier = Modifier.width(190.dp).padding(12.dp), style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
-                    assessmentColumns.forEach { column ->
-                        Column(Modifier.width(130.dp)) {
-                            HeaderCell(column.title, Modifier.width(130.dp))
+            if (loadingClassData) {
+                Text("Duke ngarkuar nxënësit…")
+            } else if (students.isEmpty()) {
+                Text("Nuk ka nxënës aktivë të regjistruar në këtë klasë.")
+            } else {
+                Card(Modifier.fillMaxWidth().weight(1f)) {
+                    Row(Modifier.horizontalScroll(horizontalScroll)) {
+                        Column(Modifier.width(210.dp)) {
+                            TableHeader("Emri dhe Mbiemri", 210.dp)
                             students.forEach { student ->
-                                val grade = gradeFor(state.grades, student.id, column.key)
-                                Text(
-                                    grade?.value?.toString() ?: "—",
-                                    modifier = Modifier
-                                        .width(130.dp)
-                                        .clickable { selectedCell = student to column }
-                                        .padding(12.dp),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+                                TableNameCell(student.fullName)
+                            }
+                        }
+
+                        assessmentColumns.forEach { column ->
+                            Column(Modifier.width(145.dp)) {
+                                TableHeader(column.title, 145.dp)
+                                students.forEach { student ->
+                                    val grade = gradeFor(state.grades, student.id, column.key)
+                                    GradeCell(
+                                        value = grade?.value,
+                                        onClick = { selectedCell = student to column }
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-            Text("Kliko në një qelizë për të caktuar ose ndryshuar notën 1–5.", style = MaterialTheme.typography.bodySmall)
+
+            Text(
+                "Kliko në qelizën e nxënësit për të vendosur notën 1–5.",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
 
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -159,49 +198,103 @@ fun GradeScreen(onBack: () -> Unit, studentId: String? = null, viewModel: Teache
         val current = gradeFor(state.grades, student.id, column.key)
         AlertDialog(
             onDismissRequest = { selectedCell = null },
-            title = { Text("${column.title} • ${student.fullName}") },
+            title = { Text("${column.title}\n${student.fullName}") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(if (current == null) "Zgjidh notën" else "Nota aktuale: ${current.value}")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (current == null) "Zgjidh notën:" else "Nota aktuale: ${current.value}")
                     (1..5).forEach { value ->
                         Button(
                             onClick = {
                                 val grade = Grade(
                                     id = current?.id ?: "TEMP-${student.id}-${column.key}-${System.currentTimeMillis()}",
                                     studentId = student.id,
-                                    subjectId = "MAT",
-                                    teacherId = "M001",
+                                    subjectId = current?.subjectId ?: "MAT",
+                                    teacherId = current?.teacherId ?: selectedClass!!.teacherId,
                                     value = value,
                                     period = periodFor(column.key),
-                                    academicYear = "2026/2027",
+                                    academicYear = current?.academicYear ?: currentAcademicYear(),
                                     note = column.title
                                 )
                                 if (current == null) viewModel.saveGrade(grade) else viewModel.updateGrade(grade)
                                 selectedCell = null
                             },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text(value.toString()) }
+                        ) {
+                            Text(value.toString())
+                        }
                     }
                     if (current != null) {
-                        TextButton(onClick = { viewModel.deleteGrade(current.id); selectedCell = null }) { Text("Fshi notën") }
+                        TextButton(
+                            onClick = {
+                                viewModel.deleteGrade(current.id)
+                                selectedCell = null
+                            }
+                        ) { Text("Fshi notën") }
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { selectedCell = null }) { Text("Anulo") } }
+            dismissButton = {
+                TextButton(onClick = { selectedCell = null }) { Text("Anulo") }
+            }
         )
     }
 }
 
 @Composable
-private fun HeaderCell(title: String, modifier: Modifier = Modifier) {
-    Text(title, modifier = modifier.padding(10.dp), style = MaterialTheme.typography.labelLarge)
+private fun TableHeader(title: String, width: androidx.compose.ui.unit.Dp) {
+    Text(
+        title,
+        modifier = Modifier
+            .width(width)
+            .border(1.dp, MaterialTheme.colorScheme.outline)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(10.dp),
+        style = MaterialTheme.typography.labelLarge
+    )
+}
+
+@Composable
+private fun TableNameCell(name: String) {
+    Row(
+        modifier = Modifier
+            .width(210.dp)
+            .border(1.dp, MaterialTheme.colorScheme.outline)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(name, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun GradeCell(value: Int?, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .width(145.dp)
+            .border(1.dp, MaterialTheme.colorScheme.outline)
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(value?.toString() ?: "—", style = MaterialTheme.typography.titleMedium)
+    }
 }
 
 private fun gradeFor(grades: List<Grade>, studentId: String, key: String): Grade? =
-    grades.firstOrNull { it.studentId == studentId && it.note == assessmentColumns.firstOrNull { column -> column.key == key }?.title }
+    grades.firstOrNull {
+        it.studentId == studentId &&
+            it.note == assessmentColumns.firstOrNull { column -> column.key == key }?.title
+    }
 
 private fun periodFor(key: String): String = when (key) {
     "SEM_1", "TEST_1", "TEST_2" -> "Periudha I"
     else -> "Periudha II"
+}
+
+private fun currentAcademicYear(): String {
+    val now = java.time.LocalDate.now()
+    val startYear = if (now.monthValue >= 9) now.year else now.year - 1
+    return "$startYear/${startYear + 1}"
 }

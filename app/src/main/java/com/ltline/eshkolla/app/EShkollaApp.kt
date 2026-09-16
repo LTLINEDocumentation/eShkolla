@@ -17,6 +17,7 @@ import com.ltline.eshkolla.features.dashboard.DashboardScreen
 import com.ltline.eshkolla.features.grades.GradeScreen
 import com.ltline.eshkolla.features.management.ManagementScreen
 import com.ltline.eshkolla.features.profile.ProfileScreen
+import com.ltline.eshkolla.features.schedule.ScheduleScreen
 import com.ltline.eshkolla.features.students.StudentScreen
 import com.ltline.eshkolla.features.students.StudentViewModel
 
@@ -27,6 +28,7 @@ private object Routes {
     const val STUDENTS = "students"
     const val CLASSES = "classes"
     const val GRADES = "grades"
+    const val SCHEDULE = "schedule"
     const val GRADE_FOR_STUDENT = "grades/{studentId}"
     const val ABSENCES = "absences"
     const val ABSENCE_FOR_STUDENT = "absences/{studentId}"
@@ -61,12 +63,17 @@ fun EShkollaApp() {
                         "classes" -> navController.navigate(Routes.CLASSES)
                         "grades" -> navController.navigate(Routes.GRADES)
                         "absences" -> navController.navigate(Routes.ABSENCES)
+                        "schedule" -> navController.navigate(Routes.SCHEDULE)
                         "teachers" -> navController.navigate("management/teachers")
                         "users" -> navController.navigate("management/users")
                         "profile" -> navController.navigate(Routes.PROFILE)
                     }
                 }
             )
+        }
+
+        composable(Routes.SCHEDULE) {
+            ScheduleScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.PROFILE) {

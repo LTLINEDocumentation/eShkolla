@@ -9,11 +9,13 @@ import com.ltline.eshkolla.api.configureRoleApi
 import com.ltline.eshkolla.api.configureRoleDataApi
 import com.ltline.eshkolla.api.configureRouting
 import com.ltline.eshkolla.api.configureSchoolOperationsApi
+import com.ltline.eshkolla.api.configureTimetableApi
 import com.ltline.eshkolla.api.configureStatusPages
 import com.ltline.eshkolla.auth.AuthService
 import com.ltline.eshkolla.db.ClassUniquenessMigration
 import com.ltline.eshkolla.db.Database
 import com.ltline.eshkolla.db.SchoolOperationsMigration
+import com.ltline.eshkolla.db.TimetableMigration
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
@@ -34,6 +36,7 @@ fun Application.module(){
  Database.initialize()
  Database.connection().use(SchoolOperationsMigration::run)
  Database.connection().use(ClassUniquenessMigration::run)
+ Database.connection().use(TimetableMigration::run)
  install(CallLogging)
  install(ContentNegotiation){json(Json{prettyPrint=true;ignoreUnknownKeys=true;encodeDefaults=true})}
  configureStatusPages()
@@ -47,5 +50,6 @@ fun Application.module(){
  configureAdminAssignmentApi(authService)
  configureClassManagementApi(authService)
  configureSchoolOperationsApi(authService)
+ configureTimetableApi(authService)
  routing{get("/"){call.respondFile(File("/app/web/index-admin.html"))};staticFiles("/",File("/app/web"))}
 }

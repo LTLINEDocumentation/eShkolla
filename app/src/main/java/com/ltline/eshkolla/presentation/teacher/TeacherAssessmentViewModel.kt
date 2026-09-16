@@ -54,6 +54,24 @@ class TeacherAssessmentViewModel(
         }
     }
 
+    fun loadGradesForClass(classId: String) {
+        val apiRepository = gradeRepository as? ApiGradeRepository
+        if (apiRepository == null) {
+            refresh()
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            runCatching { apiRepository.getGradesByClass(classId) }
+                .onSuccess { grades ->
+                    _uiState.value = _uiState.value.copy(grades = grades, isLoading = false, error = null)
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = error.message ?: "Gabim gjatë ngarkimit të notave.")
+                }
+        }
+    }
+
     fun saveGrade(grade: Grade) = execute("Gabim gjatë ruajtjes së notës.") { gradeRepository.addGrade(grade) }
 
     fun updateGrade(grade: Grade) = execute("Gabim gjatë ndryshimit të notës.") { gradeRepository.updateGrade(grade) }

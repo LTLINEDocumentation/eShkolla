@@ -167,6 +167,7 @@ fun GradeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(onClick = {
+                    selectedCell = null
                     selectedClass = null
                     selectedSubjectId = null
                     subjects = emptyList()
@@ -207,7 +208,7 @@ fun GradeScreen(
             }
 
             Text(
-                "Renditja e vlerësimit: Testi 1 → Testi 2 → Nota 1 e gjysmëvitit → Testi 3 → Testi 4 → Nota 2 e gjysmëvitit → Nota Përfundimtare.",
+                "Renditja: Testi 1 → Testi 2 → Nota 1 e gjysmëvitit → Testi 3 → Testi 4 → Nota 2 e gjysmëvitit → Nota Përfundimtare.",
                 style = MaterialTheme.typography.bodySmall
             )
         }
@@ -218,43 +219,65 @@ fun GradeScreen(
 
     selectedCell?.let { (student, column) ->
         val subjectId = selectedSubjectId
-        if (subjectId != null) {
+        val schoolClass = selectedClass
+        if (subjectId != null && schoolClass != null) {
             val current = gradeFor(state.grades, student.id, subjectId, column.key)
+            val studentIndex = students.indexOfFirst { it.id == student.id }
+            val columnIndex = assessmentColumns.indexOfFirst { it.key == column.key }
+
+            fun nextCell(): Pair<Student, AssessmentColumn>? {
+                if (studentIndex < 0 || columnIndex < 0) return null
+                val nextStudent = students.getOrNull(studentIndex + 1)
+                if (nextStudent != null) return nextStudent to column
+                val nextColumn = assessmentColumns.getOrNull(columnIndex + 1)
+                if (nextColumn != null) return students.firstOrNull()?.let { it to nextColumn }
+                return null
+            }
+
             AlertDialog(
                 onDismissRequest = { selectedCell = null },
                 title = { Text("${column.title}\n${student.fullName}") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Zgjidh notën 1–5:")
-                        (1..5).forEach { value ->
-                            Button(
-                                onClick = {
-                                    val grade = Grade(
-                                        id = current?.id ?: "",
-                                        studentId = student.id,
-                                        subjectId = subjectId,
-                                        teacherId = selectedClass!!.teacherId,
-                                        value = value,
-                                        period = periodFor(column.key),
-                                        academicYear = current?.academicYear ?: currentAcademicYear(),
-                                        note = column.title
-                                    )
-                                    if (current == null) viewModel.saveGrade(grade) else viewModel.updateGrade(grade)
-                                    selectedCell = null
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) { Text(value.toString()) }
+                        Text("Zgjidh notën:")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            (1..5).forEach { value ->
+                                Button(
+                                    onClick = {
+                                        val grade = Grade(
+                                            id = current?.id ?: "",
+                                            studentId = student.id,
+                                            subjectId = subjectId,
+                                            teacherId = schoolClass.teacherId,
+                                            value = value,
+                                            period = periodFor(column.key),
+                                            academicYear = current?.academicYear ?: currentAcademicYear(),
+                                            note = column.title
+                                        )
+                                        if (current == null) viewModel.saveGrade(grade) else viewModel.updateGrade(grade)
+                                        selectedCell = nextCell()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text(value.toString()) }
+                            }
                         }
-                        if (current != null) {
+                        current?.let {
                             TextButton(onClick = {
-                                viewModel.deleteGrade(current.id)
-                                selectedCell = null
-                            }) { Text("Fshi notën") }
+                                viewModel.deleteGrade(it.id)
+                                selectedCell = nextCell()
+                            }) { Text("Fshi dhe vazhdo") }
                         }
+                        Text(
+                            "Pas ruajtjes kalon automatikisht te vlerësimi tjetër.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = { selectedCell = null }) { Text("Anulo") } }
+                dismissButton = { TextButton(onClick = { selectedCell = null }) { Text("Mbyll") } }
             )
         }
     }

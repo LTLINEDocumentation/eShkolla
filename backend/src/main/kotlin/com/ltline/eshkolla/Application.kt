@@ -10,11 +10,13 @@ import com.ltline.eshkolla.api.configureRoleDataApi
 import com.ltline.eshkolla.api.configureRouting
 import com.ltline.eshkolla.api.configureSchoolOperationsApi
 import com.ltline.eshkolla.api.configureTimetableApi
+import com.ltline.eshkolla.api.configureTeacherScheduleCodeApi
 import com.ltline.eshkolla.api.configureStatusPages
 import com.ltline.eshkolla.auth.AuthService
 import com.ltline.eshkolla.db.ClassUniquenessMigration
 import com.ltline.eshkolla.db.Database
 import com.ltline.eshkolla.db.SchoolOperationsMigration
+import com.ltline.eshkolla.db.TeacherScheduleCodeMigration
 import com.ltline.eshkolla.db.TimetableMigration
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -37,6 +39,7 @@ fun Application.module(){
  Database.connection().use(SchoolOperationsMigration::run)
  Database.connection().use(ClassUniquenessMigration::run)
  Database.connection().use(TimetableMigration::run)
+ Database.connection().use(TeacherScheduleCodeMigration::run)
  install(CallLogging)
  install(ContentNegotiation){json(Json{prettyPrint=true;ignoreUnknownKeys=true;encodeDefaults=true})}
  configureStatusPages()
@@ -51,5 +54,6 @@ fun Application.module(){
  configureClassManagementApi(authService)
  configureSchoolOperationsApi(authService)
  configureTimetableApi(authService)
+ configureTeacherScheduleCodeApi(authService)
  routing{get("/"){call.respondFile(File("/app/web/index-admin.html"))};staticFiles("/",File("/app/web"))}
 }

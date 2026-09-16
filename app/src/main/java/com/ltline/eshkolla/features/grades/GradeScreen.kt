@@ -37,6 +37,7 @@ import com.ltline.eshkolla.data.school.TeacherClass
 import com.ltline.eshkolla.domain.model.Grade
 import com.ltline.eshkolla.domain.model.Student
 import com.ltline.eshkolla.presentation.teacher.TeacherAssessmentViewModel
+import java.util.Calendar
 
 private data class AssessmentColumn(val key: String, val title: String)
 
@@ -126,10 +127,7 @@ fun GradeScreen(
                         Column(Modifier.padding(16.dp)) {
                             Text(schoolClass.name, style = MaterialTheme.typography.titleLarge)
                             Text("Niveli: ${schoolClass.gradeLevel} • ${schoolClass.studentCount} nxënës")
-                            Text(
-                                "Hap regjistrin e notave →",
-                                modifier = Modifier.padding(top = 6.dp)
-                            )
+                            Text("Hap regjistrin e notave →", modifier = Modifier.padding(top = 6.dp))
                         }
                     }
                 }
@@ -163,9 +161,7 @@ fun GradeScreen(
                     Row(Modifier.horizontalScroll(horizontalScroll)) {
                         Column(Modifier.width(210.dp)) {
                             TableHeader("Emri dhe Mbiemri", 210.dp)
-                            students.forEach { student ->
-                                TableNameCell(student.fullName)
-                            }
+                            students.forEach { student -> TableNameCell(student.fullName) }
                         }
 
                         assessmentColumns.forEach { column ->
@@ -219,9 +215,7 @@ fun GradeScreen(
                                 selectedCell = null
                             },
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(value.toString())
-                        }
+                        ) { Text(value.toString()) }
                     }
                     if (current != null) {
                         TextButton(
@@ -234,9 +228,7 @@ fun GradeScreen(
                 }
             },
             confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { selectedCell = null }) { Text("Anulo") }
-            }
+            dismissButton = { TextButton(onClick = { selectedCell = null }) { Text("Anulo") } }
         )
     }
 }
@@ -294,7 +286,9 @@ private fun periodFor(key: String): String = when (key) {
 }
 
 private fun currentAcademicYear(): String {
-    val now = java.time.LocalDate.now()
-    val startYear = if (now.monthValue >= 9) now.year else now.year - 1
+    val calendar = Calendar.getInstance()
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH) + 1
+    val startYear = if (month >= 9) year else year - 1
     return "$startYear/${startYear + 1}"
 }

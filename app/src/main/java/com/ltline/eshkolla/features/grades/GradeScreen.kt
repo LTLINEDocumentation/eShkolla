@@ -69,6 +69,7 @@ fun GradeScreen(
     var loadingClassData by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedCell by remember { mutableStateOf<Pair<Student, AssessmentColumn>?>(null) }
+    var isSavingGrade by remember { mutableStateOf(false) }
     val horizontalScroll = rememberScrollState()
 
     LaunchedEffect(Unit) {
@@ -101,7 +102,7 @@ fun GradeScreen(
     }
 
     val selectedSubject = subjects.firstOrNull { it.id == selectedSubjectId }
-    val students = if (studentId != null) classStudents.filter { it.id == studentId } else classStudents
+    val students = classStudents
     val canEnterGrades = selectedClass != null && selectedSubject != null
 
     Column(
@@ -198,7 +199,7 @@ fun GradeScreen(
                                     val grade = gradeFor(state.grades, student.id, selectedSubjectId!!, column.key)
                                     GradeCell(
                                         value = grade?.value,
-                                        onClick = { selectedCell = student to column }
+                                        onClick = { if (!isSavingGrade) selectedCell = student to column }
                                     )
                                 }
                             }
@@ -230,54 +231,71 @@ fun GradeScreen(
                 val nextStudent = students.getOrNull(studentIndex + 1)
                 if (nextStudent != null) return nextStudent to column
                 val nextColumn = assessmentColumns.getOrNull(columnIndex + 1)
-                if (nextColumn != null) return students.firstOrNull()?.let { it to nextColumn }
-                return null
+                return nextColumn?.let { next -> students.firstOrNull()?.let { first -> first to next } }
+            }
+
+            fun advanceAfterSave() {
+                isSavingGrade = false
+                selectedCell = nextCell()
+            }
+
+            fun save(value: Int) {
+                if (isSavingGrade) return
+                isSavingGrade = true
+                val grade = Grade(
+                    id = current?.id ?: "",
+                    studentId = student.id,
+                    subjectId = subjectId,
+                    teacherId = schoolClass.teacherId,
+                    value = value,
+                    period = periodFor(column.key),
+                    academicYear = current?.academicYear ?: currentAcademicYear(),
+                    note = column.title
+                )
+                if (current == null) {
+                    viewModel.saveGrade(grade, onSuccess = ::advanceAfterSave, onFailure = { isSavingGrade = false })
+                } else {
+                    viewModel.updateGrade(grade, onSuccess = ::advanceAfterSave, onFailure = { isSavingGrade = false })
+                }
             }
 
             AlertDialog(
-                onDismissRequest = { selectedCell = null },
+                onDismissRequest = { if (!isSavingGrade) selectedCell = null },
                 title = { Text("${column.title}\n${student.fullName}") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Zgjidh notën:")
+                        Text(if (current == null) "Vendos notën:" else "Nota aktuale: ${current.value}. Zgjidh notën e re:")
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             (1..5).forEach { value ->
                                 Button(
-                                    onClick = {
-                                        val grade = Grade(
-                                            id = current?.id ?: "",
-                                            studentId = student.id,
-                                            subjectId = subjectId,
-                                            teacherId = schoolClass.teacherId,
-                                            value = value,
-                                            period = periodFor(column.key),
-                                            academicYear = current?.academicYear ?: currentAcademicYear(),
-                                            note = column.title
-                                        )
-                                        if (current == null) viewModel.saveGrade(grade) else viewModel.updateGrade(grade)
-                                        selectedCell = nextCell()
-                                    },
+                                    onClick = { save(value) },
+                                    enabled = !isSavingGrade,
                                     modifier = Modifier.weight(1f)
                                 ) { Text(value.toString()) }
                             }
                         }
                         current?.let {
-                            TextButton(onClick = {
-                                viewModel.deleteGrade(it.id)
-                                selectedCell = nextCell()
-                            }) { Text("Fshi dhe vazhdo") }
+                            TextButton(
+                                onClick = {
+                                    if (!isSavingGrade) {
+                                        isSavingGrade = true
+                                        viewModel.deleteGrade(it.id, onSuccess = ::advanceAfterSave, onFailure = { isSavingGrade = false })
+                                    }
+                                },
+                                enabled = !isSavingGrade
+                            ) { Text("Fshi dhe vazhdo") }
                         }
                         Text(
-                            "Pas ruajtjes kalon automatikisht te vlerësimi tjetër.",
+                            "Pas ruajtjes kalon automatikisht te nxënësi tjetër; pas nxënësit të fundit kalon te kolona tjetër.",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = { selectedCell = null }) { Text("Mbyll") } }
+                dismissButton = { TextButton(onClick = { if (!isSavingGrade) selectedCell = null }, enabled = !isSavingGrade) { Text("Mbyll") } }
             )
         }
     }

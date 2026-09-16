@@ -72,11 +72,17 @@ class TeacherAssessmentViewModel(
         }
     }
 
-    fun saveGrade(grade: Grade) = execute("Gabim gjatë ruajtjes së notës.") { gradeRepository.addGrade(grade) }
+    fun saveGrade(grade: Grade, onSuccess: () -> Unit = {}) = execute("Gabim gjatë ruajtjes së notës.", onSuccess) {
+        gradeRepository.addGrade(grade)
+    }
 
-    fun updateGrade(grade: Grade) = execute("Gabim gjatë ndryshimit të notës.") { gradeRepository.updateGrade(grade) }
+    fun updateGrade(grade: Grade, onSuccess: () -> Unit = {}) = execute("Gabim gjatë ndryshimit të notës.", onSuccess) {
+        gradeRepository.updateGrade(grade)
+    }
 
-    fun deleteGrade(id: String) = execute("Gabim gjatë fshirjes së notës.") { gradeRepository.deleteGrade(id) }
+    fun deleteGrade(id: String, onSuccess: () -> Unit = {}) = execute("Gabim gjatë fshirjes së notës.", onSuccess) {
+        gradeRepository.deleteGrade(id)
+    }
 
     fun saveAbsence(absence: Absence) = execute("Gabim gjatë ruajtjes së mungesës.") { absenceRepository.addAbsence(absence) }
 
@@ -84,10 +90,13 @@ class TeacherAssessmentViewModel(
 
     fun deleteAbsence(id: String) = execute("Gabim gjatë fshirjes së mungesës.") { absenceRepository.deleteAbsence(id) }
 
-    private fun execute(defaultError: String, action: suspend () -> Any?) {
+    private fun execute(defaultError: String, onSuccess: () -> Unit = {}, action: suspend () -> Any?) {
         viewModelScope.launch {
             runCatching { action() }
-                .onSuccess { refresh() }
+                .onSuccess {
+                    onSuccess()
+                    refresh()
+                }
                 .onFailure { _uiState.value = _uiState.value.copy(error = it.message ?: defaultError) }
         }
     }

@@ -6,8 +6,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 import java.sql.SQLException
@@ -81,10 +83,27 @@ fun Application.configureAdminSchoolApi(authService: AuthService) {
             if (!requireAdmin(call, authService)) return@post
             val req = call.receive<StudentCreateRequest>()
             if (req.fullName.trim().length < 2 || req.birthDate.trim().isBlank()) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Emri dhe datëlindja janë të detyrueshme.")); return@post }
-            if (!exists("classes", req.classId)) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Klasa nuk ekziston.")); return@post }
+            if (!exists("classes", req.classId)) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Klasa/paralelja nuk ekziston ose nuk është aktive.")); return@post }
             val id = "ST-${UUID.randomUUID().toString().take(10).uppercase()}"
             Database.connection().use { c -> c.prepareStatement("INSERT INTO students(id,full_name,class_id,birth_date,active) VALUES (?,?,?,?,TRUE)").use { ps -> ps.setString(1,id); ps.setString(2,req.fullName.trim()); ps.setString(3,req.classId); ps.setString(4,req.birthDate.trim()); ps.executeUpdate() } }
-            call.respond(HttpStatusCode.Created, mapOf("id" to id, "fullName" to req.fullName.trim(), "classId" to req.classId, "birthDate" to req.birthDate.trim()))
+            call.respond(HttpStatusCode.Created, StudentManagementDto(id, req.fullName.trim(), req.classId, className(req.classId), req.birthDate.trim(), true))
+        }
+        put("/api/v1/management/students/{id}") {
+            if (!requireAdmin(call, authService)) return@put
+            val id = call.parameters["id"]?.trim().orEmpty()
+            val req = call.receive<StudentCreateRequest>()
+            if (id.isBlank() || req.fullName.trim().length < 2 || req.birthDate.trim().isBlank()) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "ID, emri dhe datëlindja janë të detyrueshme.")); return@put }
+            if (!exists("students", id)) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk ekziston ose është joaktiv.")); return@put }
+            if (!exists("classes", req.classId)) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Klasa/paralelja nuk ekziston ose nuk është aktive.")); return@put }
+            Database.connection().use { c -> c.prepareStatement("UPDATE students SET full_name=?,class_id=?,birth_date=? WHERE id=? AND active=TRUE").use { ps -> ps.setString(1,req.fullName.trim()); ps.setString(2,req.classId); ps.setString(3,req.birthDate.trim()); ps.setString(4,id); ps.executeUpdate() } }
+            call.respond(StudentManagementDto(id, req.fullName.trim(), req.classId, className(req.classId), req.birthDate.trim(), true))
+        }
+        delete("/api/v1/management/students/{id}") {
+            if (!requireAdmin(call, authService)) return@delete
+            val id = call.parameters["id"]?.trim().orEmpty()
+            if (id.isBlank() || !exists("students", id)) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk ekziston ose është tashmë joaktiv.")); return@delete }
+            Database.connection().use { c -> c.prepareStatement("UPDATE students SET active=FALSE WHERE id=?").use { ps -> ps.setString(1,id); ps.executeUpdate() } }
+            call.respond(mapOf("id" to id, "active" to false, "message" to "Nxënësi u çaktivizua."))
         }
         get("/api/v1/management/teacher-subject-assignments") {
             if (!requireAdminOrDirector(call, authService)) return@get
@@ -121,6 +140,10 @@ private suspend fun requireAdminOrDirector(call: io.ktor.server.application.Appl
 }
 
 private fun exists(table: String, id: String): Boolean {
-    val safe = setOf("schools", "classes", "teachers", "subjects").firstOrNull { it == table } ?: return false
+    val safe = setOf("schools", "classes", "teachers", "subjects", "students").firstOrNull { it == table } ?: return false
     return Database.connection().use { c -> c.prepareStatement("SELECT 1 FROM $safe WHERE id=? AND active=TRUE").use { ps -> ps.setString(1,id); ps.executeQuery().use { it.next() } } }
+}
+
+private fun className(classId: String): String = Database.connection().use { c ->
+    c.prepareStatement("SELECT name FROM classes WHERE id=?").use { ps -> ps.setString(1,classId); ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else classId } }
 }

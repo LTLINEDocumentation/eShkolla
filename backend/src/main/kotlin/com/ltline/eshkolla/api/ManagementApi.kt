@@ -58,7 +58,7 @@ fun Application.configureManagementApi(authService: AuthService) {
                 val user = call.managementUser(authService) ?: return@get
                 if (user.role !in setOf("ADMINISTRATOR", "DREJTOR")) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni të drejtë për menaxhimin e mësimdhënësve.")); return@get }
                 val teachers = Database.connection().use { c ->
-                    c.prepareStatement("SELECT t.id,t.full_name,t.subject_id,t.active,u.username FROM teachers t JOIN users u ON u.id=t.user_id WHERE u.active=TRUE ORDER BY t.full_name").use { ps -> ps.executeQuery().use { rs -> buildList {
+                    c.prepareStatement("SELECT t.id,t.full_name,t.subject_id,t.active,u.username FROM teachers t JOIN users u ON u.id=t.user_id WHERE u.role='MESIMDHENES' AND u.active=TRUE AND t.active=TRUE ORDER BY LOWER(t.full_name),t.id").use { ps -> ps.executeQuery().use { rs -> buildList {
                         while (rs.next()) { val id = rs.getString("id"); add(ManagementTeacher(id, rs.getString("full_name"), rs.getString("subject_id"), rs.getString("username"), rs.getBoolean("active"), classIds(c, id))) }
                     } } }
                 }

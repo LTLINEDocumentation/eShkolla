@@ -47,7 +47,10 @@
     const sem2 = avg([g3?.value, g4?.value].map(Number).filter(Number.isFinite));
     if (key === 'mes1') return sem1;
     if (key === 'mes2') return sem2;
-    if (key === 'final') return avg([sem1, sem2].filter(Number.isFinite));
+    if (key === 'final') {
+      const finalAverage = avg([sem1, sem2].filter(Number.isFinite));
+      return finalAverage == null ? null : Math.round(finalAverage);
+    }
     return null;
   }
 
@@ -122,7 +125,7 @@
     const yearLabel = year();
     $('moduleContent').innerHTML = `<div class="web-grade-panel">
       <div class="web-grade-toolbar"><div><strong>Vlerësimi i nxënësve</strong><small>${esc(state.className)} · ${esc(subject?.name || '')} · ${yearLabel}</small></div><button type="button" class="secondary" id="gradeV2Refresh">Rifresko</button></div>
-      <div class="web-grade-hint">Notat 1–2 i takojnë Gjysmëvjetorit I, ndërsa Notat 3–4 Gjysmëvjetorit II. Mesataret dhe Nota Finale llogariten automatikisht dhe nuk plotësohen manualisht.</div>
+      <div class="web-grade-hint">Notat 1–2 i takojnë Gjysmëvjetorit I, ndërsa Notat 3–4 Gjysmëvjetorit II. Mesataret dhe Nota Finale llogariten automatikisht. Nota Finale rrumbullakoset në numrin e plotë më të afërt; 4.5 bëhet 5.</div>
       <div class="table-wrap web-grade-table-wrap"><table class="web-grade-table grade-standard-table"><thead><tr><th>Nr.</th><th>Emri dhe Mbiemri</th>${columns.map(c => `<th class="${c.auto ? 'grade-auto-head' : ''}">${esc(c.label)}</th>`).join('')}</tr></thead><tbody>
       ${rows.length ? rows.map((student, rowIndex) => `<tr><td class="grade-number">${rowIndex + 1}</td><td class="web-grade-name"><strong>${esc(student.fullName)}</strong></td>${columns.map((c, colIndex) => {
         if (c.auto) {

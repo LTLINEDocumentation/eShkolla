@@ -20,7 +20,7 @@ import java.sql.SQLException
 import java.util.UUID
 
 @Serializable
-data class ManagementTeacher(val id: String, val fullName: String, val subjectId: String, val username: String, val active: Boolean, val classIds: List<String>)
+data class ManagementTeacher(val id: String, val fullName: String, val subjectId: String?, val username: String, val active: Boolean, val classIds: List<String>)
 
 @Serializable
 data class ManagementClass(val id: String, val name: String, val gradeLevel: Int, val active: Boolean, val studentCount: Int, val teacherIds: List<String>)
@@ -58,7 +58,7 @@ fun Application.configureManagementApi(authService: AuthService) {
                 val user = call.managementUser(authService) ?: return@get
                 if (user.role !in setOf("ADMINISTRATOR", "DREJTOR")) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni të drejtë për menaxhimin e mësimdhënësve.")); return@get }
                 val teachers = Database.connection().use { c ->
-                    c.prepareStatement("SELECT t.id,t.full_name,t.subject_id,t.active,u.username FROM teachers t JOIN users u ON u.id=t.user_id ORDER BY t.full_name").use { ps -> ps.executeQuery().use { rs -> buildList {
+                    c.prepareStatement("SELECT t.id,t.full_name,t.subject_id,t.active,u.username FROM teachers t JOIN users u ON u.id=t.user_id WHERE u.active=TRUE ORDER BY t.full_name").use { ps -> ps.executeQuery().use { rs -> buildList {
                         while (rs.next()) { val id = rs.getString("id"); add(ManagementTeacher(id, rs.getString("full_name"), rs.getString("subject_id"), rs.getString("username"), rs.getBoolean("active"), classIds(c, id))) }
                     } } }
                 }
@@ -144,8 +144,7 @@ private fun validateUserCreate(request: UserCreateRequest): ApiError? {
     if (request.fullName.trim().length < 2) return ApiError("VALIDATION_ERROR", "Emri dhe mbiemri janë të detyrueshëm.")
     if (request.password.length < 10) return ApiError("VALIDATION_ERROR", "Fjalëkalimi duhet të ketë së paku 10 karaktere.")
     if (request.role !in allowedRoles) return ApiError("VALIDATION_ERROR", "Roli nuk është i vlefshëm.")
-    if (request.role == "MESIMDHENES" && request.subjectId.isNullOrBlank()) return ApiError("VALIDATION_ERROR", "Lënda është e detyrueshme për mësimdhënësin.")
-    if (request.role in setOf("NXENES", "PRIND") && request.studentId.isNullOrBlank()) return ApiError("VALIDATION_ERROR", "studentId është i detyrueshëm për këtë rol.")
+    if (request.role == "PRIND" && request.studentId.isNullOrBlank()) return ApiError("VALIDATION_ERROR", "Për rolin Prind duhet të zgjidhet nxënësi i lidhur.")
     return null
 }
 
@@ -163,12 +162,14 @@ private fun createUser(connection: Connection, request: UserCreateRequest): User
             "MESIMDHENES" -> {
                 val teacherId = request.teacherId?.trim()?.takeIf { it.isNotBlank() } ?: "M-${UUID.randomUUID().toString().take(8).uppercase()}"
                 connection.prepareStatement("INSERT INTO teachers(id,user_id,full_name,subject_id,active) VALUES (?,?,?,?,TRUE)").use { ps ->
-                    ps.setString(1, teacherId); ps.setString(2, id); ps.setString(3, request.fullName.trim()); ps.setString(4, request.subjectId!!.trim()); ps.executeUpdate()
+                    ps.setString(1, teacherId); ps.setString(2, id); ps.setString(3, request.fullName.trim()); ps.setNull(4, java.sql.Types.VARCHAR); ps.executeUpdate()
                 }
             }
             "NXENES" -> {
-                ensureStudentExists(connection, studentId!!)
-                connection.prepareStatement("INSERT INTO student_users(user_id,student_id) VALUES (?,?)").use { ps -> ps.setString(1, id); ps.setString(2, studentId); ps.executeUpdate() }
+                if (!studentId.isNullOrBlank()) {
+                    ensureStudentExists(connection, studentId)
+                    connection.prepareStatement("INSERT INTO student_users(user_id,student_id) VALUES (?,?)").use { ps -> ps.setString(1, id); ps.setString(2, studentId); ps.executeUpdate() }
+                }
             }
             "PRIND" -> {
                 ensureStudentExists(connection, studentId!!)

@@ -8,11 +8,14 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.delete
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 import java.sql.SQLException
+import java.util.UUID
 
 @Serializable data class AdminSchoolUpdate(val name:String,val address:String?=null)
 @Serializable data class AdminSubjectUpdate(val name:String,val code:String?=null)
@@ -20,8 +23,25 @@ import java.sql.SQLException
 @Serializable data class AdminStudentUpdate(val fullName:String,val classId:String,val birthDate:String)
 @Serializable data class AdminUserUpdate(val username:String,val fullName:String,val role:String,val active:Boolean)
 
+@Serializable data class AdminSubject(val id:String,val name:String,val code:String?,val active:Boolean)
+
 fun Application.configureAdminCrudApi(authService:AuthService){
  routing{route("/api/v1/management"){
+  get("/subjects"){
+   if(!adminOnly(call,authService))return@get
+   val rows=Database.connection().use{c->c.prepareStatement("SELECT id,name,code,active FROM subjects ORDER BY LOWER(name),id").use{p->p.executeQuery().use{rs->buildList{while(rs.next())add(AdminSubject(rs.getString("id"),rs.getString("name"),rs.getString("code"),rs.getBoolean("active")))}}}}
+   call.respond(rows)
+  }
+  post("/subjects"){
+   if(!adminOnly(call,authService))return@post
+   val r=call.receive<AdminSubjectUpdate>();val name=r.name.trim();val code=r.code?.trim()?.takeIf{it.isNotBlank()}
+   if(name.length<2){call.respond(HttpStatusCode.BadRequest,ApiError("VALIDATION_ERROR","Emri i lëndës është i detyrueshëm."));return@post}
+   try{
+    val id="SUB-${UUID.randomUUID().toString().take(8).uppercase()}"
+    Database.connection().use{c->c.prepareStatement("INSERT INTO subjects(id,name,code,active) VALUES (?,?,?,TRUE)").use{p->p.setString(1,id);p.setString(2,name);p.setString(3,code);p.executeUpdate()}}
+    call.respond(HttpStatusCode.Created,AdminSubject(id,name,code,true))
+   }catch(_:SQLException){call.respond(HttpStatusCode.Conflict,ApiError("ALREADY_EXISTS","Lënda ose kodi ekziston."))}
+  }
   put("/schools/{id}"){if(!adminOnly(call,authService))return@put;val id=call.parameters["id"].orEmpty();val r=call.receive<AdminSchoolUpdate>();if(r.name.trim().length<2){call.respond(HttpStatusCode.BadRequest,ApiError("VALIDATION_ERROR","Emri i shkollës është i detyrueshëm."));return@put};try{val n=Database.connection().use{c->c.prepareStatement("UPDATE schools SET name=?,address=? WHERE id=?").use{p->p.setString(1,r.name.trim());p.setString(2,r.address?.trim()?.takeIf{it.isNotBlank()});p.setString(3,id);p.executeUpdate()}};if(n==0)call.respond(HttpStatusCode.NotFound,ApiError("NOT_FOUND","Shkolla nuk u gjet."))else call.respond(mapOf("id" to id))}catch(_:SQLException){call.respond(HttpStatusCode.Conflict,ApiError("ALREADY_EXISTS","Shkolla nuk mund të ndryshohet me këto të dhëna."))}}
   delete("/schools/{id}"){if(!adminOnly(call,authService))return@delete;softDelete(call,authService,call.parameters["id"].orEmpty(),"schools","Shkolla")}
 

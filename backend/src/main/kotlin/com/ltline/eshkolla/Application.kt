@@ -21,6 +21,7 @@ import com.ltline.eshkolla.db.SchoolOperationsMigration
 import com.ltline.eshkolla.db.TeacherAccountProvisioningMigration
 import com.ltline.eshkolla.db.TeacherScheduleCodeMigration
 import com.ltline.eshkolla.db.TimetableMigration
+import com.ltline.eshkolla.db.UserTeacherProvisioningMigration
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
@@ -44,6 +45,7 @@ fun Application.module(){
  Database.connection().use(TimetableMigration::run)
  Database.connection().use(TeacherScheduleCodeMigration::run)
  Database.connection().use(TeacherAccountProvisioningMigration::run)
+ Database.connection().use(UserTeacherProvisioningMigration::run)
  install(CallLogging)
  install(ContentNegotiation){json(Json{prettyPrint=true;ignoreUnknownKeys=true;encodeDefaults=true})}
  configureStatusPages()

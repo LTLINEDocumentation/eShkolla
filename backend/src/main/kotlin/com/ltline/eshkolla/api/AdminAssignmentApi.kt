@@ -7,10 +7,18 @@ import io.ktor.server.application.Application
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.delete
+import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 import java.sql.SQLException
+
+@Serializable
+data class TeacherSubjectAssignmentCreateRequest(
+    val teacherId: String,
+    val subjectId: String,
+    val classId: String
+)
 
 @Serializable
 data class TeacherSubjectAssignmentUpdateRequest(
@@ -24,8 +32,43 @@ data class TeacherSubjectAssignmentUpdateRequest(
 
 fun Application.configureAdminAssignmentApi(authService: AuthService) {
     routing {
+        post("/api/v1/management/teacher-subject-assignments") {
+            if (!requireAssignmentManager(call, authService)) return@post
+            val req = call.receive<TeacherSubjectAssignmentCreateRequest>()
+            if (req.teacherId.isBlank() || req.subjectId.isBlank() || req.classId.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Mësimdhënësi, lënda, klasa dhe paralelja janë të detyrueshme."))
+                return@post
+            }
+            if (!exists("teachers", req.teacherId) || !exists("subjects", req.subjectId) || !exists("classes", req.classId)) {
+                call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Mësimdhënësi, lënda ose klasa/paralelja nuk ekziston."))
+                return@post
+            }
+            try {
+                Database.connection().use { c ->
+                    c.autoCommit = false
+                    try {
+                        c.prepareStatement("INSERT INTO teacher_subjects(teacher_id,subject_id,class_id) VALUES (?,?,?)").use { ps ->
+                            ps.setString(1, req.teacherId); ps.setString(2, req.subjectId); ps.setString(3, req.classId); ps.executeUpdate()
+                        }
+                        c.prepareStatement("INSERT INTO teacher_classes(teacher_id,class_id) VALUES (?,?) ON CONFLICT DO NOTHING").use { ps ->
+                            ps.setString(1, req.teacherId); ps.setString(2, req.classId); ps.executeUpdate()
+                        }
+                        c.commit()
+                    } catch (e: SQLException) {
+                        c.rollback()
+                        throw e
+                    } finally {
+                        c.autoCommit = true
+                    }
+                }
+                call.respond(HttpStatusCode.Created, req)
+            } catch (_: SQLException) {
+                call.respond(HttpStatusCode.Conflict, ApiError("ALREADY_EXISTS", "Ky caktim ekziston tashmë ose të dhënat nuk janë valide."))
+            }
+        }
+
         put("/api/v1/management/teacher-subject-assignments") {
-            if (!requireAdmin(call, authService)) return@put
+            if (!requireAssignmentManager(call, authService)) return@put
             val req = call.receive<TeacherSubjectAssignmentUpdateRequest>()
             if (!exists("teachers", req.teacherId) || !exists("subjects", req.subjectId) || !exists("classes", req.classId)) {
                 call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Mësimdhënësi, lënda ose klasa e re nuk ekziston."))
@@ -61,15 +104,12 @@ fun Application.configureAdminAssignmentApi(authService: AuthService) {
                     c.autoCommit = true
                 }
             }
-            if (!changed) {
-                call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Caktimi që po ndryshohet nuk ekziston më."))
-            } else {
-                call.respond(mapOf("success" to true))
-            }
+            if (!changed) call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Caktimi që po ndryshohet nuk ekziston më."))
+            else call.respond(mapOf("success" to true))
         }
 
         delete("/api/v1/management/teacher-subject-assignments") {
-            if (!requireAdmin(call, authService)) return@delete
+            if (!requireAssignmentManager(call, authService)) return@delete
             val teacherId = call.request.queryParameters["teacherId"]
             val subjectId = call.request.queryParameters["subjectId"]
             val classId = call.request.queryParameters["classId"]
@@ -101,11 +141,11 @@ fun Application.configureAdminAssignmentApi(authService: AuthService) {
     }
 }
 
-private suspend fun requireAdmin(call: io.ktor.server.application.ApplicationCall, auth: AuthService): Boolean {
+private suspend fun requireAssignmentManager(call: io.ktor.server.application.ApplicationCall, auth: AuthService): Boolean {
     val token = call.request.headers["Authorization"]?.removePrefix("Bearer ")?.takeIf { it.isNotBlank() }
     val user = token?.let(auth::userFor)
     if (user == null) { call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return false }
-    if (user.role != "ADMINISTRATOR") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm administratori ka këtë qasje.")); return false }
+    if (user.role !in setOf("ADMINISTRATOR", "DREJTOR")) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm administratori ose drejtori mund të menaxhojë caktimet.")); return false }
     return true
 }
 

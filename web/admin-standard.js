@@ -40,7 +40,7 @@ async function teachers(){
     const code=x.scheduleCode??codeMap.get(String(x.id));
     const status=x.relationStatus||((x.username&&classNames.length&&code)?'OK':'Kontrollo lidhjet');
     const statusHtml=status==='OK'?'<span class="status">Në rregull</span>':`<span class="status">${esc(status)}</span>`;
-    return [`<td>${esc(x.id)}</td>`,`<td><strong>${esc(x.fullName)}</strong></td>`,`<td>${esc(subjectMap.get(String(x.subjectId))||x.subjectName||x.subjectId)}</td>`,`<td>${esc(x.username||'—')}</td>`,`<td>${classNames.length?classNames.map(esc).join(', '):'—'}</td>`,`<td>${code??'—'}</td>`,`<td>${statusHtml}</td>`,`<td>${adminStandardButtons('teacher',x.id,x.fullName)}</td>`];
+    return [`<td>${esc(x.id)}</td>`,`<td><strong>${esc(x.fullName)}</strong></td>`,`<td>${esc(subjectMap.get(String(x.subjectId))||x.subjectName||x.subjectId||'—')}</td>`,`<td>${esc(x.username||'—')}</td>`,`<td>${classNames.length?classNames.map(esc).join(', '):'—'}</td>`,`<td>${code??'—'}</td>`,`<td>${statusHtml}</td>`,`<td>${adminStandardButtons('teacher',x.id,x.fullName)}</td>`];
   });
   adminStandardTable(['ID','Mësimdhënësi','Lënda','Përdoruesi','Klasat / paralelet','Kodi i orarit','Lidhjet','Veprime'],rows,'Shto mësimdhënës',()=>teacherForm());
 }
@@ -53,7 +53,7 @@ async function students(admin=false){
     return;
   }
   const d=await api('/api/v1/management/students');
-  adminStandardTable(['ID','Emri','Klasa','Datëlindja','Statusi','Veprime'],d.map(x=>[`<td>${esc(x.id)}</td>`,`<td>${esc(x.fullName)}</td>`,`<td>${esc(x.className)}</td>`,`<td>${esc(x.birthDate)}</td>`,`<td>${x.active?'Aktiv':'Joaktiv'}</td>`,`<td>${adminStandardButtons('student',x.id,x.fullName)}</td>`]),'Shto nxënës',()=>studentForm());
+  adminStandardTable(['ID','Emri','Klasa / paralelja','Datëlindja','Statusi','Veprime'],d.map(x=>[`<td>${esc(x.id)}</td>`,`<td>${esc(x.fullName)}</td>`,`<td>${esc(x.className)}</td>`,`<td>${esc(x.birthDate)}</td>`,`<td>${x.active?'Aktiv':'Joaktiv'}</td>`,`<td>${adminStandardButtons('student',x.id,x.fullName)}</td>`]),'Shto nxënës',()=>studentForm());
 }
 
 async function users(){
@@ -84,19 +84,13 @@ function selectOptions(items,selected,mode){
   }).join('');
 }
 
-function gradeForm(item,studentsData,subjectsData,teachersData){
-  const body=`<label>Nxënësi<select name="studentId" required>${selectOptions(studentsData,item?.studentId,'student')}</select></label><label>Lënda<select name="subjectId" required>${selectOptions(subjectsData,item?.subjectId,'subject')}</select></label><label>Nota<input name="value" type="number" min="1" max="5" step="1" required value="${esc(item?.value??'')}"></label><label>Periudha<input name="period" required value="${esc(item?.period??'P1')}"></label><label>Viti shkollor<input name="academicYear" required value="${esc(item?.academicYear??new Date().getFullYear()+'-'+(new Date().getFullYear()+1))}"></label><label>Mësimdhënësi<select name="teacherId" required>${selectOptions(teachersData,item?.teacherId,'teacher')}</select></label><label>Shënim<input name="note" value="${esc(item?.note||'')}"></label>`;
-  modal(item?'Rregullo notën':'Shto notë',body,async f=>{
-    const payload={studentId:f.get('studentId'),subjectId:f.get('subjectId'),teacherId:f.get('teacherId'),value:Number(f.get('value')),period:f.get('period'),academicYear:f.get('academicYear'),note:f.get('note')||null};
-    return api(item?`/api/v1/grades/${encodeURIComponent(item.id)}`:'/api/v1/grades',{method:item?'PUT':'POST',body:JSON.stringify(payload)});
-  });
-}
-
-function absenceForm(item,studentsData,subjectsData,teachersData){
-  const body=`<label>Nxënësi<select name="studentId" required>${selectOptions(studentsData,item?.studentId,'student')}</select></label><label>Lënda<select name="subjectId" required>${selectOptions(subjectsData,item?.subjectId,'subject')}</select></label><label>Data<input name="date" type="date" required value="${esc(item?.date||new Date().toISOString().slice(0,10))}"></label><label>Statusi<select name="status"><option value="E_PAAFTESUAR" ${item?.status==='E_PAAFTESUAR'?'selected':''}>E Paaftësuar</option><option value="E_ARSYESHME" ${item?.status==='E_ARSYESHME'?'selected':''}>E arsyeshme</option></select></label><label>Mësimdhënësi<select name="teacherId" required>${selectOptions(teachersData,item?.teacherId,'teacher')}</select></label><label>Shënim<input name="note" value="${esc(item?.note||'')}"></label>`;
-  modal(item?'Rregullo mungesën':'Shto mungesë',body,async f=>{
-    const payload={studentId:f.get('studentId'),subjectId:f.get('subjectId'),teacherId:f.get('teacherId'),date:f.get('date'),status:f.get('status'),note:f.get('note')||null};
-    return api(item?`/api/v1/absences/${encodeURIComponent(item.id)}`:'/api/v1/absences',{method:item?'PUT':'POST',body:JSON.stringify(payload)});
+async function studentForm(item=null){
+  const classes=await api('/api/v1/management/classes');
+  const activeClasses=classes.filter(x=>x.active!==false);
+  const body=`<label>Emri dhe mbiemri<input name="fullName" type="text" required value="${esc(item?.fullName||'')}"></label><label>Datëlindja<input name="birthDate" type="date" required value="${esc(item?.birthDate||'')}"></label><label>Klasa / paralelja<select name="classId" required><option value="">Zgjidh klasën / paralelen...</option>${activeClasses.map(x=>`<option value="${esc(x.id)}" ${String(x.id)===String(item?.classId)?'selected':''}>${esc(x.name)} — Klasa ${esc(x.gradeLevel)}</option>`).join('')}</select></label><p class="form-help">Prindi: opsional. Nxënësi mund të regjistrohet edhe pa prind të lidhur; lidhja me prindin mund të bëhet më vonë.</p>`;
+  modal(item?'Rregullo nxënësin':'Shto nxënës',body,async f=>{
+    const payload={fullName:f.get('fullName'),birthDate:f.get('birthDate'),classId:f.get('classId')};
+    return api(item?`/api/v1/management/students/${encodeURIComponent(item.id)}`:'/api/v1/management/students',{method:item?'PUT':'POST',body:JSON.stringify(payload)});
   });
 }
 

@@ -1,5 +1,5 @@
 // Standardi i Administratorit (SHEFI): çdo modul menaxhimi ka Shto, Rregullo, Fshij + konfirmim.
-// Ky skedar ngarkohet i fundit që standardi të jetë uniform edhe kur module të tjera kanë implementime të veçanta.
+// Të dhënat administrative lexohen nga endpointet reale të management.
 
 function adminStandardButtons(kind,id,name){
   return `<div class="section-actions"><button type="button" class="secondary admin-standard-edit" data-kind="${esc(kind)}" data-id="${esc(id)}">Rregullo</button><button type="button" class="secondary admin-standard-delete" data-kind="${esc(kind)}" data-id="${esc(id)}" data-name="${esc(name)}">Fshij</button></div>`;
@@ -15,6 +15,7 @@ function adminStandardTable(headers,rows,addLabel,onAdd){
   $('resultCount').textContent=`${rows.length} rezultate reale`;
   $('dynamicAdd').onclick=onAdd;
   bindAdminStandardActions();
+  if(typeof window.bindAdminFilters==='function') window.bindAdminFilters();
 }
 
 async function schools(){
@@ -28,8 +29,20 @@ async function subjects(){
 }
 
 async function teachers(){
-  const d=await api('/api/v1/management/teachers');
-  adminStandardTable(['ID','Mësimdhënësi','Lënda kryesore','Përdoruesi','Klasa','Statusi','Veprime'],d.map(x=>[`<td>${esc(x.id)}</td>`,`<td>${esc(x.fullName)}</td>`,`<td>${esc(x.subjectId)}</td>`,`<td>${esc(x.username)}</td>`,`<td>${esc((x.classIds||[]).join(', ')||'—')}</td>`,`<td>${x.active?'Aktiv':'Joaktiv'}</td>`,`<td>${adminStandardButtons('teacher',x.id,x.fullName)}</td>`]),'Shto mësimdhënës',()=>teacherForm());
+  const [d,subjectsData,classesData,codes]=await Promise.all([
+    api('/api/v1/management/teachers'),api('/api/v1/management/subjects'),api('/api/v1/management/classes'),api('/api/v1/management/timetable-codes')
+  ]);
+  const subjectMap=new Map(subjectsData.map(x=>[String(x.id),x.name]));
+  const classMap=new Map(classesData.map(x=>[String(x.id),x.name]));
+  const codeMap=new Map(codes.filter(x=>x.teacherId).map(x=>[String(x.teacherId),x.code]));
+  const rows=d.map(x=>{
+    const classNames=(x.classIds||[]).map(id=>classMap.get(String(id))||id);
+    const code=x.scheduleCode??codeMap.get(String(x.id));
+    const status=x.relationStatus||((x.username&&classNames.length&&code)?'OK':'Kontrollo lidhjet');
+    const statusHtml=status==='OK'?'<span class="status">Në rregull</span>':`<span class="status">${esc(status)}</span>`;
+    return [`<td>${esc(x.id)}</td>`,`<td><strong>${esc(x.fullName)}</strong></td>`,`<td>${esc(subjectMap.get(String(x.subjectId))||x.subjectName||x.subjectId)}</td>`,`<td>${esc(x.username||'—')}</td>`,`<td>${classNames.length?classNames.map(esc).join(', '):'—'}</td>`,`<td>${code??'—'}</td>`,`<td>${statusHtml}</td>`,`<td>${adminStandardButtons('teacher',x.id,x.fullName)}</td>`];
+  });
+  adminStandardTable(['ID','Mësimdhënësi','Lënda','Përdoruesi','Klasat / paralelet','Kodi i orarit','Lidhjet','Veprime'],rows,'Shto mësimdhënës',()=>teacherForm());
 }
 
 async function students(admin=false){
@@ -49,19 +62,19 @@ async function users(){
 }
 
 async function grades(){
-  const [d,studentsData,subjectsData,teachersData]=await Promise.all([api('/api/v1/grades'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers')]);
+  const [d,studentsData,subjectsData,teachersData]=await Promise.all([api('/api/v1/management/grades'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers')]);
   const studentName=id=>studentsData.find(x=>x.id===id)?.fullName||id;
   const subjectName=id=>subjectsData.find(x=>x.id===id)?.name||id;
   const teacherName=id=>teachersData.find(x=>x.id===id)?.fullName||id;
-  adminStandardTable(['Nxënësi','Lënda','Nota','Periudha','Viti','Mësimdhënësi','Veprime'],d.map(x=>[`<td>${esc(studentName(x.studentId))}</td>`,`<td>${esc(subjectName(x.subjectId))}</td>`,`<td>${esc(x.value)}</td>`,`<td>${esc(x.period)}</td>`,`<td>${esc(x.academicYear)}</td>`,`<td>${esc(teacherName(x.teacherId))}</td>`,`<td>${adminStandardButtons('grade',x.id,`${studentName(x.studentId)} — ${subjectName(x.subjectId)}`)}</td>`]),'Shto notë',()=>gradeForm(null,studentsData,subjectsData,teachersData));
+  adminStandardTable(['Nxënësi','Lënda','Nota','Periudha','Viti','Mësimdhënësi','Veprime'],d.map(x=>[`<td>${esc(x.studentName||studentName(x.studentId))}</td>`,`<td>${esc(x.subjectName||subjectName(x.subjectId))}</td>`,`<td>${esc(x.value)}</td>`,`<td>${esc(x.period)}</td>`,`<td>${esc(x.academicYear)}</td>`,`<td>${esc(x.teacherName||teacherName(x.teacherId))}</td>`,`<td>${adminStandardButtons('grade',x.id,`${x.studentName||studentName(x.studentId)} — ${x.subjectName||subjectName(x.subjectId)}`)}</td>`]),'Shto notë',()=>gradeForm(null,studentsData,subjectsData,teachersData));
 }
 
 async function absences(){
-  const [d,studentsData,subjectsData,teachersData]=await Promise.all([api('/api/v1/absences'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers')]);
+  const [d,studentsData,subjectsData,teachersData]=await Promise.all([api('/api/v1/management/absences'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers')]);
   const studentName=id=>studentsData.find(x=>x.id===id)?.fullName||id;
   const subjectName=id=>subjectsData.find(x=>x.id===id)?.name||id;
   const teacherName=id=>teachersData.find(x=>x.id===id)?.fullName||id;
-  adminStandardTable(['Nxënësi','Lënda','Data','Statusi','Shënim','Mësimdhënësi','Veprime'],d.map(x=>[`<td>${esc(studentName(x.studentId))}</td>`,`<td>${esc(subjectName(x.subjectId))}</td>`,`<td>${esc(x.date)}</td>`,`<td>${esc(x.status)}</td>`,`<td>${esc(x.note||'')}</td>`,`<td>${esc(teacherName(x.teacherId))}</td>`,`<td>${adminStandardButtons('absence',x.id,`${studentName(x.studentId)} — ${x.date}`)}</td>`]),'Shto mungesë',()=>absenceForm(null,studentsData,subjectsData,teachersData));
+  adminStandardTable(['Nxënësi','Lënda','Data','Statusi','Shënim','Mësimdhënësi','Veprime'],d.map(x=>[`<td>${esc(x.studentName||studentName(x.studentId))}</td>`,`<td>${esc(x.subjectName||subjectName(x.subjectId))}</td>`,`<td>${esc(x.date)}</td>`,`<td>${esc(x.status)}</td>`,`<td>${esc(x.note||'')}</td>`,`<td>${esc(x.teacherName||teacherName(x.teacherId))}</td>`,`<td>${adminStandardButtons('absence',x.id,`${x.studentName||studentName(x.studentId)} — ${x.date}`)}</td>`]),'Shto mungesë',()=>absenceForm(null,studentsData,subjectsData,teachersData));
 }
 
 function selectOptions(items,selected,mode){
@@ -94,11 +107,11 @@ async function adminEdit(kind,id){
   if(kind==='student') return editStudent(id);
   if(kind==='user') return editUser(id);
   if(kind==='grade'){
-    const [d,s,sub,t]=await Promise.all([api('/api/v1/grades'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers')]);
+    const [d,s,sub,t]=await Promise.all([api('/api/v1/management/grades'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers')]);
     const item=d.find(x=>x.id===id); if(item) gradeForm(item,s,sub,t); return;
   }
   if(kind==='absence'){
-    const [d,s,sub,t]=await Promise.all([api('/api/v1/absences'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers')]);
+    const [d,s,sub,t]=await Promise.all([api('/api/v1/management/absences'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers')]);
     const item=d.find(x=>x.id===id); if(item) absenceForm(item,s,sub,t); return;
   }
 }

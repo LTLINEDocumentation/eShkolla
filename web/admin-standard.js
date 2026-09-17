@@ -94,6 +94,13 @@ async function studentForm(item=null){
   });
 }
 
+async function editStudent(id){
+  const [studentsData,classes]=await Promise.all([api('/api/v1/management/students'),api('/api/v1/management/classes')]);
+  const item=studentsData.find(x=>String(x.id)===String(id));
+  if(!item){ alert('Nxënësi nuk u gjet.'); return; }
+  await studentForm(item);
+}
+
 async function adminEdit(kind,id){
   if(kind==='school') return editSchool(id);
   if(kind==='subject') return editSubject(id);

@@ -20,4 +20,28 @@
     );
     if(typeof window.bindAdminFilters==='function')window.bindAdminFilters();
   };
+
+  const originalAdminGrades=window.grades;
+  window.grades=async function adminGradesSafe(){
+    if(currentUser?.role!=='ADMINISTRATOR') return originalAdminGrades();
+    await originalAdminGrades();
+    const selected=window.adminGradesClassId||'';
+    if(!selected) return;
+    const host=$('moduleContent');
+    if(!host) return;
+    if($('adminGradesBackSafe')) return;
+    const toolbar=host.querySelector('.section-actions');
+    if(!toolbar) return;
+    const back=document.createElement('button');
+    back.type='button';
+    back.className='secondary';
+    back.id='adminGradesBackSafe';
+    back.textContent='← Klasat';
+    back.style.marginRight='8px';
+    back.onclick=async()=>{
+      window.adminGradesClassId='';
+      await originalAdminGrades();
+    };
+    toolbar.insertBefore(back,toolbar.firstChild);
+  };
 })();

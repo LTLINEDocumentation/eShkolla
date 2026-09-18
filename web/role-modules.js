@@ -79,7 +79,7 @@ function nextWebCell(state,row,col){
 async function saveWebGrade(state,row,col,value,existing){
   const column=webAssessmentColumns[col];
   if(!column||column.editable===false)throw Error('Kjo notë llogaritet automatikisht nga sistemi.');
-  const d=state.data,student=state.students.filter(s=>s.active).sort((a,b)=>a.fullName.localeCompare(b.fullName,'sq'))[row],column=webAssessmentColumns[col];
+  const d=state.data,student=state.students.filter(s=>s.active).sort((a,b)=>a.fullName.localeCompare(b.fullName,'sq'))[row];
   if(!student||!column)return;
   const payload={studentId:student.id,subjectId:state.subjectId,teacherId:d.teacherId,value:Number(value),period:column.period,academicYear:webAcademicYear(),note:column.note};
   const saved=await api(existing?`/api/v1/grades/${encodeURIComponent(existing.id)}`:'/api/v1/grades',{method:existing?'PUT':'POST',body:JSON.stringify(payload)});

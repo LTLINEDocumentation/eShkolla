@@ -13,17 +13,38 @@ const _originalStudents=window.students;
 window.students=async function roleStudents(admin=false){if(currentUser?.role==='MESIMDHENES'){const d=await loadTeacherRoleData();const q=($('tableSearch')?.value||'').trim().toLowerCase();const rows=d.students.filter(x=>!q||x.fullName.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)).map(x=>[x.id,x.fullName,x.className,x.birthDate,x.active?'Aktiv':'Joaktiv']);table(['ID','Emri','Klasa','Datëlindja','Statusi'],rows);return;}return _originalStudents(admin);}
 const _originalGrades=window.grades;
 const webAssessmentColumns=[
-  {key:'test1',label:'Testi 1',note:'Testi 1',period:'Periudha I'},
-  {key:'test2',label:'Testi 2',note:'Testi 2',period:'Periudha I'},
-  {key:'mid1',label:'Nota 1 e gjysmëvitit',note:'Nota 1 e gjysmëvitit',period:'Periudha I'},
-  {key:'test3',label:'Testi 3',note:'Testi 3',period:'Periudha II'},
-  {key:'test4',label:'Testi 4',note:'Testi 4',period:'Periudha II'},
-  {key:'mid2',label:'Nota 2 e gjysmëvitit',note:'Nota 2 e gjysmëvitit',period:'Periudha II'},
-  {key:'final',label:'Nota Përfundimtare',note:'Nota Përfundimtare',period:'Periudha II'}
+  {key:'test1',label:'Testi 1',note:'Testi 1',period:'Periudha I',editable:true},
+  {key:'test2',label:'Testi 2',note:'Testi 2',period:'Periudha I',editable:true},
+  {key:'mid1',label:'Nota 1 e gjysmëvitit',note:'Nota 1 e gjysmëvitit',period:'Periudha I',editable:false,automatic:true},
+  {key:'test3',label:'Testi 3',note:'Testi 3',period:'Periudha II',editable:true},
+  {key:'test4',label:'Testi 4',note:'Testi 4',period:'Periudha II',editable:true},
+  {key:'mid2',label:'Nota 2 e gjysmëvitit',note:'Nota 2 e gjysmëvitit',period:'Periudha II',editable:false,automatic:true},
+  {key:'final',label:'Nota Përfundimtare',note:'Nota Përfundimtare',period:'Periudha II',editable:false,automatic:true}
 ];
 function webAcademicYear(){const now=new Date();const start=now.getMonth()>=8?now.getFullYear():now.getFullYear()-1;return `${start}/${start+1}`;}
 function webGradeFor(grades,studentId,subjectId,column){return grades.find(g=>g.studentId===studentId&&g.subjectId===subjectId&&g.note===column.note)||null;}
-function webGradeCellValue(g){return g?String(g.value):'—';}
+function webManualGrade(grades,studentId,subjectId,note){return grades.find(g=>g.studentId===studentId&&g.subjectId===subjectId&&g.note===note)||null;}
+function webRoundedAverage(values){if(values.length!==2||values.some(v=>v==null||Number.isNaN(Number(v))))return null;return Math.min(5,Math.max(1,Math.floor((Number(values[0])+Number(values[1]))/2+0.5)));}
+function webAutomaticGrade(grades,studentId,subjectId,column){
+  if(!column.automatic)return webGradeFor(grades,studentId,subjectId,column)?.value??null;
+  if(column.key==='mid1'){
+    const a=webManualGrade(grades,studentId,subjectId,'Testi 1');
+    const b=webManualGrade(grades,studentId,subjectId,'Testi 2');
+    return webRoundedAverage([a?.value,b?.value]);
+  }
+  if(column.key==='mid2'){
+    const a=webManualGrade(grades,studentId,subjectId,'Testi 3');
+    const b=webManualGrade(grades,studentId,subjectId,'Testi 4');
+    return webRoundedAverage([a?.value,b?.value]);
+  }
+  if(column.key==='final'){
+    const mid1=webAutomaticGrade(grades,studentId,subjectId,webAssessmentColumns.find(x=>x.key==='mid1'));
+    const mid2=webAutomaticGrade(grades,studentId,subjectId,webAssessmentColumns.find(x=>x.key==='mid2'));
+    return webRoundedAverage([mid1,mid2]);
+  }
+  return null;
+}
+function webGradeCellValue(g){return g==null?'—':String(g);}
 function renderWebGrades(state){
   const {data,classId,subjectId,students}=state;
   const subject=data.subjects.find(s=>s.id===subjectId);
@@ -38,7 +59,7 @@ function renderWebGrades(state){
       </div>
       <div class="web-grade-hint">Kliko në qelizën e nxënësit dhe zgjidh notën 1–5. Pas ruajtjes kalon automatikisht te nxënësi tjetër; në fund të kolonës vazhdon te vlerësimi tjetër.</div>
       <div class="table-wrap web-grade-table-wrap"><table class="web-grade-table"><thead><tr>${['Emri dhe Mbiemri',...webAssessmentColumns.map(c=>c.label)].map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>
-        ${activeStudents.length?activeStudents.map((student,rowIndex)=>`<tr><td class="web-grade-name"><strong>${esc(student.fullName)}</strong></td>${webAssessmentColumns.map((column,colIndex)=>{const g=webGradeFor(gradeList,student.id,subjectId,column);return `<td><button type="button" class="web-grade-cell ${g?'has-grade':''}" data-student="${esc(student.id)}" data-row="${rowIndex}" data-col="${colIndex}">${esc(webGradeCellValue(g))}</button></td>`}).join('')}</tr>`).join(''):`<tr><td colspan="8" class="empty-state">Nuk ka nxënës aktivë në këtë klasë.</td></tr>`}
+        ${activeStudents.length?activeStudents.map((student,rowIndex)=>`<tr><td class="web-grade-name"><strong>${esc(student.fullName)}</strong></td>${webAssessmentColumns.map((column,colIndex)=>{const value=webAutomaticGrade(gradeList,student.id,subjectId,column);const editable=column.editable!==false;return editable?`<td><button type="button" class="web-grade-cell ${value!=null?'has-grade':''}" data-student="${esc(student.id)}" data-row="${rowIndex}" data-col="${colIndex}">${esc(webGradeCellValue(value))}</button></td>`:`<td class="web-grade-auto-cell ${value!=null?'has-grade':''}" title="Llogaritet automatikisht nga sistemi"><strong>${esc(webGradeCellValue(value))}</strong></td>`}).join('')}</tr>`).join(''):`<tr><td colspan="8" class="empty-state">Nuk ka nxënës aktivë në këtë klasë.</td></tr>`}
       </tbody></table></div>
       <p id="webGradeStatus" class="result-count"></p>
     </div>`;
@@ -49,12 +70,15 @@ function renderWebGrades(state){
 }
 function nextWebCell(state,row,col){
   const rows=state.students.filter(s=>s.active).sort((a,b)=>a.fullName.localeCompare(b.fullName,'sq'));
+  const editableColumns=webAssessmentColumns.map((x,i)=>x.editable!==false?i:-1).filter(i=>i>=0);
   if(!rows.length)return null;
   if(row+1<rows.length)return {row:row+1,col};
-  if(col+1<webAssessmentColumns.length)return {row:0,col:col+1};
-  return null;
+  const nextColumn=editableColumns.find(i=>i>col);
+  return nextColumn==null?null:{row:0,col:nextColumn};
 }
 async function saveWebGrade(state,row,col,value,existing){
+  const column=webAssessmentColumns[col];
+  if(!column||column.editable===false)throw Error('Kjo notë llogaritet automatikisht nga sistemi.');
   const d=state.data,student=state.students.filter(s=>s.active).sort((a,b)=>a.fullName.localeCompare(b.fullName,'sq'))[row],column=webAssessmentColumns[col];
   if(!student||!column)return;
   const payload={studentId:student.id,subjectId:state.subjectId,teacherId:d.teacherId,value:Number(value),period:column.period,academicYear:webAcademicYear(),note:column.note};
@@ -64,7 +88,9 @@ async function saveWebGrade(state,row,col,value,existing){
 async function deleteWebGrade(state,row,col,existing){if(!existing)return;await api(`/api/v1/grades/${encodeURIComponent(existing.id)}`,{method:'DELETE'});state.data.grades=state.data.grades.filter(g=>g.id!==existing.id);renderWebGrades(state);}
 function openWebGradePicker(state,row,col){
   const students=state.students.filter(s=>s.active).sort((a,b)=>a.fullName.localeCompare(b.fullName,'sq'));
-  const student=students[row],column=webAssessmentColumns[col],existing=webGradeFor(state.data.grades||[],student.id,state.subjectId,column);
+  const student=students[row],column=webAssessmentColumns[col];
+  if(!column||column.editable===false)return;
+  const existing=webGradeFor(state.data.grades||[],student.id,state.subjectId,column);
   const wrap=document.createElement('div');wrap.className='modal';wrap.innerHTML=`<div class="modal-card web-grade-picker"><div class="section-title"><div><h3>Vlerëso nxënësin</h3><p class="muted">${esc(student.fullName)} · ${esc(column.label)}</p></div><button type="button" class="secondary" id="closeWebGrade">Mbyll</button></div><div class="web-grade-buttons">${[1,2,3,4,5].map(n=>`<button type="button" class="web-grade-choice ${String(existing?.value)===String(n)?'selected':''}" data-value="${n}">${n}</button>`).join('')}</div>${existing?'<button type="button" class="secondary web-grade-delete">Fshij notën</button>':''}<p id="webGradePickerError" class="error"></p></div>`;
   document.body.appendChild(wrap);
   const close=()=>wrap.remove();$('closeWebGrade').onclick=close;
@@ -86,7 +112,7 @@ window.grades=async function roleGrades(){
   if(selectedClass&&selectedSubject)renderWebGrades({data:d,classId:selectedClass,subjectId:selectedSubject,students});
 }
 function injectWebGradeStyles(){if(document.getElementById('webGradeStyles'))return;const style=document.createElement('style');style.id='webGradeStyles';style.textContent=`
-.web-grade-panel{display:grid;gap:14px}.web-grade-selectors{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:14px;padding:14px;border:1px solid #dbe3ef;border-radius:12px;background:#f8fafc}.web-grade-selectors label{display:grid;gap:6px;font-weight:600}.web-grade-selectors select{width:100%}.web-grade-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px}.web-grade-toolbar strong{display:block;font-size:18px}.web-grade-toolbar small{display:block;margin-top:4px;color:#667085}.web-grade-hint{padding:10px 12px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#475467}.web-grade-table-wrap{overflow:auto}.web-grade-table{min-width:1200px}.web-grade-table th:first-child,.web-grade-table td:first-child{position:sticky;left:0;z-index:2;background:#fff}.web-grade-table th{white-space:nowrap}.web-grade-table th:not(:first-child){min-width:145px}.web-grade-name{min-width:220px}.web-grade-cell{width:100%;min-width:125px;min-height:46px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;font-size:17px;font-weight:700;cursor:pointer}.web-grade-cell:hover{border-color:#1f6feb}.web-grade-cell.has-grade{background:#f0fdf4}.web-grade-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:18px 0}.web-grade-choice{height:58px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;font-size:22px;font-weight:800;cursor:pointer}.web-grade-choice.selected{border-width:2px}.web-grade-picker{max-width:520px}.web-grade-delete{width:100%;margin-top:8px}.web-grade-picker .section-title{align-items:flex-start}@media(max-width:700px){.web-grade-selectors{grid-template-columns:1fr}.web-grade-toolbar{align-items:stretch;flex-direction:column}}
+.web-grade-panel{display:grid;gap:14px}.web-grade-selectors{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:14px;padding:14px;border:1px solid #dbe3ef;border-radius:12px;background:#f8fafc}.web-grade-selectors label{display:grid;gap:6px;font-weight:600}.web-grade-selectors select{width:100%}.web-grade-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px}.web-grade-toolbar strong{display:block;font-size:18px}.web-grade-toolbar small{display:block;margin-top:4px;color:#667085}.web-grade-hint{padding:10px 12px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#475467}.web-grade-table-wrap{overflow:auto}.web-grade-table{min-width:1200px}.web-grade-table th:first-child,.web-grade-table td:first-child{position:sticky;left:0;z-index:2;background:#fff}.web-grade-table th{white-space:nowrap}.web-grade-table th:not(:first-child){min-width:145px}.web-grade-name{min-width:220px}.web-grade-cell{width:100%;min-width:125px;min-height:46px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;font-size:17px;font-weight:700;cursor:pointer}.web-grade-cell:hover{border-color:#1f6feb}.web-grade-cell.has-grade{background:#f0fdf4}.web-grade-auto-cell{width:100%;min-width:125px;min-height:46px;border:1px dashed #cbd5e1;border-radius:8px;background:#f8fafc;font-size:17px;text-align:center;vertical-align:middle}.web-grade-auto-cell.has-grade{background:#eef6ff;border-style:solid}.web-grade-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:18px 0}.web-grade-choice{height:58px;border:1px solid #d0d5dd;border-radius:10px;background:#fff;font-size:22px;font-weight:800;cursor:pointer}.web-grade-choice.selected{border-width:2px}.web-grade-picker{max-width:520px}.web-grade-delete{width:100%;margin-top:8px}.web-grade-picker .section-title{align-items:flex-start}@media(max-width:700px){.web-grade-selectors{grid-template-columns:1fr}.web-grade-toolbar{align-items:stretch;flex-direction:column}}
 `;document.head.appendChild(style)}
 const _originalAbsences=window.absences;
 window.absences=async function roleAbsences(){if(currentUser?.role!=='MESIMDHENES')return _originalAbsences();const d=await loadTeacherRoleData(true);$('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button class="primary" id="dynamicAdd">+ Shto mungesë</button></div><div class="table-wrap"><table><thead><tr>${['Nxënësi','Lënda','Data','Statusi','Shënim','Veprime'].map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${d.absences.length?d.absences.map(x=>`<tr><td>${esc(x.studentName)}</td><td>${esc(x.subjectName)}</td><td>${esc(x.date)}</td><td>${esc(x.status)}</td><td>${esc(x.note||'—')}</td><td><div class="section-actions"><button type="button" class="secondary teacher-absence-edit" data-id="${esc(x.id)}">Rregullo</button><button type="button" class="secondary teacher-absence-delete" data-id="${esc(x.id)}">Fshij</button></div></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Nuk ka mungesa të regjistruara.</td></tr>`}</tbody></table></div>`;$('resultCount').textContent=`${d.absences.length} rezultate reale`;$('dynamicAdd').onclick=()=>teacherAbsenceForm();document.querySelectorAll('.teacher-absence-edit').forEach(b=>b.onclick=()=>{const x=d.absences.find(v=>v.id===b.dataset.id);if(x)teacherAbsenceForm(x)});document.querySelectorAll('.teacher-absence-delete').forEach(b=>b.onclick=()=>teacherDelete('/api/v1/absences/'+encodeURIComponent(b.dataset.id),'mungesën'));}

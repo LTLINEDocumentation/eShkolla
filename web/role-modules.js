@@ -10,7 +10,28 @@ window.subjects=async function roleSubjects(){if(currentUser?.role==='MESIMDHENE
 const _originalClasses=window.classes;
 window.classes=async function roleClasses(admin=false){if(currentUser?.role==='MESIMDHENES'){const d=await loadTeacherRoleData();table(['ID','Klasa / paralelja','Niveli','Nxënës'],d.classes.map(x=>[x.id,x.name,x.gradeLevel,x.studentCount]));return;}return _originalClasses(admin);}
 const _originalStudents=window.students;
-window.students=async function roleStudents(admin=false){if(currentUser?.role==='MESIMDHENES'){const d=await loadTeacherRoleData();const q=($('tableSearch')?.value||'').trim().toLowerCase();const rows=d.students.filter(x=>!q||x.fullName.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)).map(x=>[x.id,x.fullName,x.className,x.birthDate,x.active?'Aktiv':'Joaktiv']);table(['ID','Emri','Klasa','Datëlindja','Statusi'],rows);return;}return _originalStudents(admin);}
+window.students=async function roleStudents(admin=false){
+  if(currentUser?.role==='MESIMDHENES'){
+    const d=await loadTeacherRoleData(true);
+    const classes=(d.classes||[]).filter(c=>c.active!==false).sort((a,b)=>Number(a.gradeLevel)-Number(b.gradeLevel)||String(a.name).localeCompare(String(b.name),'sq',{numeric:true}));
+    const selected=window.teacherStudentsClassId||'';
+    const cls=classes.find(c=>String(c.id)===String(selected));
+    if(!cls){
+      $('moduleContent').innerHTML=`<div class="web-grade-panel"><div class="web-grade-toolbar"><div><strong>Zgjidh klasën</strong><small>Shfaqen vetëm klasat/paralelet që i janë caktuar këtij mësimdhënësi.</small></div></div><div class="web-grade-class-grid">${classes.length?classes.map(c=>`<button type="button" class="web-grade-class-card teacher-student-class" data-class="${esc(c.id)}"><strong>${esc(c.name)}</strong><span>${Number(c.studentCount||0)} nxënës</span></button>`).join(''):`<div class="empty-state">Nuk ka klasa të caktuara.</div>`}</div></div>`;
+      $('resultCount').textContent=`${classes.length} klasa`;
+      document.querySelectorAll('.teacher-student-class').forEach(b=>b.onclick=()=>{window.teacherStudentsClassId=b.dataset.class;students();});
+      injectWebGradeStyles();
+      return;
+    }
+    const q=($('tableSearch')?.value||'').trim().toLowerCase();
+    const rows=d.students.filter(x=>String(x.classId)===String(selected)&&(!q||x.fullName.toLowerCase().includes(q)||x.id.toLowerCase().includes(q))).map(x=>[x.id,x.fullName,x.className,x.birthDate,x.active?'Aktiv':'Joaktiv']);
+    $('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button type="button" class="secondary" id="teacherStudentsBack">← Klasat</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Emri</th><th>Klasa</th><th>Datëlindja</th><th>Statusi</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="5" class="empty-state">Nuk ka nxënës në këtë klasë.</td></tr>`}</tbody></table></div>`;
+    $('resultCount').textContent=`${rows.length} nxënës · ${esc(cls.name)}`;
+    $('teacherStudentsBack').onclick=()=>{window.teacherStudentsClassId='';students();};
+    return;
+  }
+  return _originalStudents(admin);
+}
 const _originalGrades=window.grades;
 const webAssessmentColumns=[
   {key:'test1',label:'Testi 1',note:'Testi 1',period:'Periudha I',editable:true},
@@ -150,6 +171,26 @@ function injectWebGradeStyles(){if(document.getElementById('webGradeStyles'))ret
 @media(max-width:700px){.web-grade-class-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.web-grade-selectors{grid-template-columns:1fr}.web-grade-toolbar{align-items:stretch;flex-direction:column}.web-grade-table th:first-child,.web-grade-table td:first-child{width:30%}.web-grade-table th:not(:first-child),.web-grade-table td:not(:first-child){width:10%}}
 `;document.head.appendChild(style)}
 const _originalAbsences=window.absences;
-window.absences=async function roleAbsences(){if(currentUser?.role!=='MESIMDHENES')return _originalAbsences();const d=await loadTeacherRoleData(true);$('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button class="primary" id="dynamicAdd">+ Shto mungesë</button></div><div class="table-wrap"><table><thead><tr>${['Nxënësi','Lënda','Data','Statusi','Shënim','Veprime'].map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${d.absences.length?d.absences.map(x=>`<tr><td>${esc(x.studentName)}</td><td>${esc(x.subjectName)}</td><td>${esc(x.date)}</td><td>${esc(x.status)}</td><td>${esc(x.note||'—')}</td><td><div class="section-actions"><button type="button" class="secondary teacher-absence-edit" data-id="${esc(x.id)}">Rregullo</button><button type="button" class="secondary teacher-absence-delete" data-id="${esc(x.id)}">Fshij</button></div></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Nuk ka mungesa të regjistruara.</td></tr>`}</tbody></table></div>`;$('resultCount').textContent=`${d.absences.length} rezultate reale`;$('dynamicAdd').onclick=()=>teacherAbsenceForm();document.querySelectorAll('.teacher-absence-edit').forEach(b=>b.onclick=()=>{const x=d.absences.find(v=>v.id===b.dataset.id);if(x)teacherAbsenceForm(x)});document.querySelectorAll('.teacher-absence-delete').forEach(b=>b.onclick=()=>teacherDelete('/api/v1/absences/'+encodeURIComponent(b.dataset.id),'mungesën'));}
+window.absences=async function roleAbsences(){
+  if(currentUser?.role!=='MESIMDHENES')return _originalAbsences();
+  const d=await loadTeacherRoleData(true);
+  const classes=(d.classes||[]).filter(c=>c.active!==false).sort((a,b)=>Number(a.gradeLevel)-Number(b.gradeLevel)||String(a.name).localeCompare(String(b.name),'sq',{numeric:true}));
+  const selected=window.teacherAbsencesClassId||'';
+  const cls=classes.find(c=>String(c.id)===String(selected));
+  if(!cls){
+    $('moduleContent').innerHTML=`<div class="web-grade-panel"><div class="web-grade-toolbar"><div><strong>Zgjidh klasën</strong><small>Shfaqen vetëm klasat/paralelet që i janë caktuar këtij mësimdhënësi.</small></div></div><div class="web-grade-class-grid">${classes.length?classes.map(c=>`<button type="button" class="web-grade-class-card teacher-absence-class" data-class="${esc(c.id)}"><strong>${esc(c.name)}</strong><span>${Number(c.studentCount||0)} nxënës</span></button>`).join(''):`<div class="empty-state">Nuk ka klasa të caktuara.</div>`}</div></div>`;
+    $('resultCount').textContent=`${classes.length} klasa`;
+    document.querySelectorAll('.teacher-absence-class').forEach(b=>b.onclick=()=>{window.teacherAbsencesClassId=b.dataset.class;absences();});
+    injectWebGradeStyles();
+    return;
+  }
+  const rows=d.absences.filter(x=>String(x.classId||d.students.find(s=>s.id===x.studentId)?.classId)===String(selected));
+  $('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button type="button" class="secondary" id="teacherAbsencesBack">← Klasat</button><button class="primary" id="dynamicAdd">+ Shto mungesë</button></div><div class="table-wrap"><table><thead><tr>${['Nxënësi','Lënda','Data','Statusi','Shënim','Veprime'].map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(x=>`<tr><td>${esc(x.studentName)}</td><td>${esc(x.subjectName)}</td><td>${esc(x.date)}</td><td>${esc(x.status)}</td><td>${esc(x.note||'—')}</td><td><div class="section-actions"><button type="button" class="secondary teacher-absence-edit" data-id="${esc(x.id)}">Rregullo</button><button type="button" class="secondary teacher-absence-delete" data-id="${esc(x.id)}">Fshij</button></div></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Nuk ka mungesa të regjistruara për këtë klasë.</td></tr>`}</tbody></table></div>`;
+  $('resultCount').textContent=`${rows.length} mungesa · ${esc(cls.name)}`;
+  $('teacherAbsencesBack').onclick=()=>{window.teacherAbsencesClassId='';absences();};
+  $('dynamicAdd').onclick=()=>teacherAbsenceForm();
+  document.querySelectorAll('.teacher-absence-edit').forEach(b=>b.onclick=()=>{const x=rows.find(v=>v.id===b.dataset.id);if(x)teacherAbsenceForm(x)});
+  document.querySelectorAll('.teacher-absence-delete').forEach(b=>b.onclick=()=>teacherDelete('/api/v1/absences/'+encodeURIComponent(b.dataset.id),'mungesën'));
+}
 async function teacherAbsenceForm(existing=null){const d=await loadTeacherRoleData();const body=`<label>Nxënësi<select name="studentId" required>${d.students.filter(x=>x.active).map(x=>`<option value="${esc(x.id)}" ${existing?.studentId===x.id?'selected':''}>${esc(x.fullName)} — ${esc(x.className)}</option>`).join('')}</select></label><label>Lënda<select name="subjectId" required>${d.subjects.map(x=>`<option value="${esc(x.id)}" ${existing?.subjectId===x.id?'selected':''}>${esc(x.name)} — ${esc(x.classIds?.length||0)} klasa</option>`).join('')}</select></label>`+field('date','Data','date',`required value="${esc(existing?.date||new Date().toISOString().slice(0,10))}"`)+`<label>Statusi<select name="status" required>${['Mungon','Me arsye','Pa arsye','E arsyetuar'].map(x=>`<option ${existing?.status===x?'selected':''}>${x}</option>`).join('')}</select></label>`+field('note','Shënim','text',`value="${esc(existing?.note||'')}"`);modal(existing?'Rregullo mungesën':'Shto mungesë',body,async f=>api(existing?`/api/v1/absences/${encodeURIComponent(existing.id)}`:'/api/v1/absences',{method:existing?'PUT':'POST',body:JSON.stringify({studentId:f.get('studentId'),subjectId:f.get('subjectId'),teacherId:d.teacherId,date:f.get('date'),status:f.get('status'),note:f.get('note')||null})}));}
 async function teacherDelete(url,label){if(!confirm(`A jeni i sigurt që doni ta fshini ${label}?\n\nKy veprim nuk mund të zhbëhet.`))return;try{await api(url,{method:'DELETE'});teacherRoleData=null;await openModule(currentModule)}catch(e){alert(e.message)}}

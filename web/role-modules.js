@@ -123,7 +123,7 @@ window.grades=async function roleGrades(){
   const d=await loadTeacherRoleData(true);
   const classes=(d.classes||[]).filter(c=>c.active!==false).sort((a,b)=>String(a.name).localeCompare(String(b.name),'sq',{numeric:true}));
   const selectedClass=window.webGradesClassId||'';
-  const selectedClassObj=classes.find(c=>c.id===selectedClass);
+  const selectedClassObj=classes.find(c=>String(c.id)===String(selectedClass));
   if(!selectedClassObj){
     window.webGradesSubjectId='';
     $('moduleContent').innerHTML=`<div class="web-grade-panel">
@@ -136,10 +136,10 @@ window.grades=async function roleGrades(){
     return;
   }
 
-  const subjectsForClass=(d.subjects||[]).filter(s=>s.classIds?.includes(selectedClass)).sort((a,b)=>String(a.name).localeCompare(String(b.name),'sq'));
+  const subjectsForClass=(d.subjects||[]).filter(s=>(s.classIds||[]).some(id=>String(id)===String(selectedClass))).sort((a,b)=>String(a.name).localeCompare(String(b.name),'sq'));
   const selectedSubject=window.webGradesSubjectId&&subjectsForClass.some(s=>s.id===window.webGradesSubjectId)?window.webGradesSubjectId:(subjectsForClass[0]?.id||'');
   window.webGradesSubjectId=selectedSubject;
-  const students=(d.students||[]).filter(s=>s.classId===selectedClass);
+  const students=(d.students||[]).filter(s=>String(s.classId)===String(selectedClass));
 
   $('moduleContent').innerHTML=`<div class="web-grade-panel">
     <div class="web-grade-breadcrumb">

@@ -43,7 +43,7 @@ async function grades(){
   const rows=classStudents.map(s=>{const gs=d.filter(g=>g.studentId===s.id);return [`<td><strong>${esc(s.fullName)}</strong></td>`,`<td>${gs.length?gs.map(g=>`${esc(subjectsData.find(x=>x.id===g.subjectId)?.name||g.subjectId)}: <strong>${esc(g.value)}</strong>`).join('<br>'):'—'}</td>`,`<td>${gs.length?gs.map(g=>`${esc(g.period)} · ${esc(g.academicYear)}`).join('<br>'):'—'}</td>`,`<td><button type="button" class="secondary admin-add-grade" data-student="${esc(s.id)}">+ Shto notë</button></td>`];});
   $('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button type="button" class="secondary" id="adminGradesBack">← Klasat</button><strong style="margin-left:8px">${esc(cls?.name||'Klasa')}</strong></div><div class="table-wrap"><table><thead><tr><th>Emri dhe mbiemri</th><th>Notat</th><th>Periudha / viti</th><th>Veprime</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${r.join('')}</tr>`).join(''):`<tr><td colspan="4" class="empty-state">Nuk ka nxënës në këtë klasë.</td></tr>`}</tbody></table></div>`;
   $('resultCount').textContent=`${rows.length} nxënës · ${esc(cls?.name||'')}`;
-  $('adminGradesBack').onclick=()=>nav.back();
+  $('adminGradesBack').onclick=async()=>{window.adminGradesClassId='';await adminClassCards('grade',classes,'',id=>{window.adminGradesClassId=String(id);grades();});};
   document.querySelectorAll('.admin-add-grade').forEach(b=>b.onclick=()=>{const st=studentsData.find(s=>s.id===b.dataset.student);gradeForm(null,[st],subjectsData,teachersData)});
 }
 async function absences(){
@@ -56,7 +56,7 @@ async function absences(){
   const rows=classStudents.map(s=>{const as=d.filter(a=>a.studentId===s.id);return [`<td><strong>${esc(s.fullName)}</strong></td>`,`<td>${as.length?as.map(a=>`${esc(subjectsData.find(x=>x.id===a.subjectId)?.name||a.subjectId)}: ${esc(a.date)} — ${esc(a.status)}`).join('<br>'):'—'}</td>`,`<td>${as.length?as.map(a=>esc(a.note||'—')).join('<br>'):'—'}</td>`,`<td><button type="button" class="secondary admin-add-absence" data-student="${esc(s.id)}">+ Shto mungesë</button></td>`];});
   $('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button type="button" class="secondary" id="adminAbsencesBack">← Klasat</button><strong style="margin-left:8px">${esc(cls?.name||'Klasa')}</strong></div><div class="table-wrap"><table><thead><tr><th>Emri dhe mbiemri</th><th>Mungesat</th><th>Shënimi</th><th>Veprime</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${r.join('')}</tr>`).join(''):`<tr><td colspan="4" class="empty-state">Nuk ka nxënës në këtë klasë.</td></tr>`}</tbody></table></div>`;
   $('resultCount').textContent=`${rows.length} nxënës · ${esc(cls?.name||'')}`;
-  $('adminAbsencesBack').onclick=()=>nav.back();
+  $('adminAbsencesBack').onclick=async()=>{window.adminAbsencesClassId='';await adminClassCards('absence',classes,'',id=>{window.adminAbsencesClassId=String(id);absences();});};
   document.querySelectorAll('.admin-add-absence').forEach(b=>b.onclick=()=>{const st=studentsData.find(s=>s.id===b.dataset.student);absenceForm(null,[st],subjectsData,teachersData)});
 }
 function selectOptions(items,selected,mode){return items.map(x=>{const label=mode==='student'?`${x.fullName} — ${x.className}`:mode==='teacher'?`${x.fullName} — ${x.username}`:x.name;return `<option value="${esc(x.id)}" ${x.id===selected?'selected':''}>${esc(label)}</option>`;}).join('');}

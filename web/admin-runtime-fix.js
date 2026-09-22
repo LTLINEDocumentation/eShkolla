@@ -37,13 +37,79 @@
   const _absencesFinal=window.absences;
   window.absences=async function finalAbsences(){
     if(currentUser?.role!=='ADMINISTRATOR')return _absencesFinal();
-    const classes=await api('/api/v1/management/classes');
-    const selected=window.adminAbsencesClassId||'';
+
+    const [d,studentsData,subjectsData,teachersData,classes]=await Promise.all([
+      api('/api/v1/management/absences'),
+      api('/api/v1/management/students'),
+      api('/api/v1/management/subjects'),
+      api('/api/v1/management/teachers'),
+      api('/api/v1/management/classes')
+    ]);
+
+    const selected=String(window.adminAbsencesClassId||'');
+    const activeClasses=(classes||[]).filter(x=>x.active!==false)
+      .sort((a,b)=>Number(a.gradeLevel)-Number(b.gradeLevel)||String(a.name).localeCompare(String(b.name),'sq',{numeric:true}));
+
+    // PA KLASË: shfaq kategorinë e klasave direkt, pa u varur nga adminClassCards.
     if(!selected){
-      await adminClassCards('absence',classes,'',id=>{window.adminAbsencesClassId=String(id);absences();});
+      $('moduleContent').innerHTML=`
+        <div class="admin-class-module">
+          <div class="admin-class-module-head">
+            <div><strong>Zgjidh klasën</strong><small>Zgjidh klasën për të parë dhe menaxhuar mungesat.</small></div>
+          </div>
+          <div class="admin-class-grid">
+            ${activeClasses.length?activeClasses.map(x=>`
+              <button type="button" class="admin-class-card admin-absence-class-card" data-class-id="${esc(x.id)}">
+                <strong>${esc(x.name)}</strong><span>Klasa ${esc(x.gradeLevel)}</span>
+              </button>`).join(''):'<div class="empty-state">Nuk ka klasa aktive.</div>'}
+          </div>
+        </div>`;
+      $('resultCount').textContent=`${activeClasses.length} klasa`;
+      document.querySelectorAll('.admin-absence-class-card').forEach(b=>{
+        b.onclick=()=>{window.adminAbsencesClassId=String(b.dataset.classId);window.absences();};
+      });
       return;
     }
-    return _absencesFinal();
+
+    const cls=activeClasses.find(x=>String(x.id)===selected);
+    if(!cls){
+      window.adminAbsencesClassId='';
+      return window.absences();
+    }
+
+    const classStudents=(studentsData||[]).filter(s=>String(s.classId)===selected&&s.active!==false);
+    const rows=classStudents.map(s=>{
+      const as=(d||[]).filter(a=>String(a.studentId)===String(s.id));
+      return [
+        `<td><strong>${esc(s.fullName)}</strong></td>`,
+        `<td>${as.length?as.map(a=>`${esc(subjectsData.find(x=>String(x.id)===String(a.subjectId))?.name||a.subjectId)}: ${esc(a.date)} — ${esc(a.status)}`).join('<br>'):'—'}</td>`,
+        `<td>${as.length?as.map(a=>esc(a.note||'—')).join('<br>'):'—'}</td>`,
+        `<td><button type="button" class="secondary admin-add-absence" data-student="${esc(s.id)}">+ Shto mungesë</button></td>`
+      ];
+    });
+
+    $('moduleContent').innerHTML=`
+      <div class="section-actions" style="margin-bottom:14px">
+        <button type="button" class="secondary" id="adminAbsencesBack">← Klasat</button>
+        <strong style="margin-left:8px">${esc(cls.name)}</strong>
+      </div>
+      <div class="table-wrap"><table><thead><tr>
+        <th>Emri dhe mbiemri</th><th>Mungesat</th><th>Shënimi</th><th>Veprime</th>
+      </tr></thead><tbody>
+        ${rows.length?rows.map(r=>`<tr>${r.join('')}</tr>`).join(''):'<tr><td colspan="4" class="empty-state">Nuk ka nxënës në këtë klasë.</td></tr>'}
+      </tbody></table></div>`;
+
+    $('resultCount').textContent=`${rows.length} nxënës · ${esc(cls.name)}`;
+    $('adminAbsencesBack').onclick=()=>{
+      window.adminAbsencesClassId='';
+      window.absences();
+    };
+    document.querySelectorAll('.admin-add-absence').forEach(b=>{
+      b.onclick=()=>{
+        const st=studentsData.find(s=>String(s.id)===String(b.dataset.student));
+        absenceForm(null,[st],subjectsData,teachersData);
+      };
+    });
   };
 
   const _teacherStudentsFinal=window.students;

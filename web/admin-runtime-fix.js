@@ -124,7 +124,7 @@
     document.querySelectorAll('.admin-add-absence').forEach(b=>{
       b.onclick=()=>{
         const st=studentsData.find(s=>String(s.id)===String(b.dataset.student));
-        absenceForm(null,[st],subjectsData,teachersData);
+        window.absenceForm(null,[st],subjectsData,teachersData);
       };
     });
   };

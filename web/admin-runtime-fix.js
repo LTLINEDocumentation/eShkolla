@@ -121,13 +121,43 @@
       window.adminAbsencesClassId='';
       window.absences();
     };
+    function adminAbsenceForm(student){
+      const studentSubjects=(subjectsData||[]).filter(x=>x.active!==false);
+      const studentTeachers=(teachersData||[]).filter(x=>x.active!==false);
+      const today=new Date().toISOString().slice(0,10);
+      const subjectOptions=studentSubjects.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+(x.code?' ('+esc(x.code)+')':'')+'</option>').join('');
+      const teacherOptions=studentTeachers.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.fullName)+'</option>').join('');
+      if(!student)throw new Error('Nxënësi nuk u gjet.');
+      if(!subjectOptions)throw new Error('Nuk ka lëndë aktive.');
+      if(!teacherOptions)throw new Error('Nuk ka mësimdhënës aktivë.');
+      const body=
+        '<label>Nxënësi<input name="studentName" value="'+esc(student.fullName)+'" disabled></label>'+
+        '<input type="hidden" name="studentId" value="'+esc(student.id)+'">'+
+        '<label>Lënda<select name="subjectId" required><option value="">Zgjidh lëndën</option>'+subjectOptions+'</select></label>'+
+        '<label>Mësimdhënësi<select name="teacherId" required><option value="">Zgjidh mësimdhënësin</option>'+teacherOptions+'</select></label>'+
+        '<label>Data<input name="date" type="date" value="'+today+'" required></label>'+
+        '<label>Statusi<select name="status" required><option value="E_ARSYESHME">E arsyeshme</option><option value="E_PAAFTESUAR">E paarsyeshme</option></select></label>'+
+        '<label>Shënimi<textarea name="note" rows="3" placeholder="Shënim (opsional)"></textarea></label>';
+      modal('Shto mungesë',body,async form=>{
+        const payload={
+          studentId:String(form.get('studentId')||''),
+          subjectId:String(form.get('subjectId')||''),
+          teacherId:String(form.get('teacherId')||''),
+          date:String(form.get('date')||''),
+          status:String(form.get('status')||''),
+          note:String(form.get('note')||'').trim()||null
+        };
+        if(!payload.subjectId||!payload.teacherId||!payload.date||!payload.status)throw new Error('Plotëso fushat e detyrueshme.');
+        await api('/api/v1/management/absences',{method:'POST',body:JSON.stringify(payload)});
+        window.adminAbsencesClassId=selected;
+        await window.absences();
+      });
+    }
     document.querySelectorAll('.admin-add-absence').forEach(b=>{
       b.onclick=()=>{
         try{
           const st=studentsData.find(s=>String(s.id)===String(b.dataset.student));
-          if(!st)throw new Error('Nxënësi nuk u gjet.');
-          if(typeof window.absenceForm!=='function')throw new Error('Formulari i mungesës nuk është ngarkuar.');
-          window.absenceForm(null,[st],subjectsData,teachersData);
+          adminAbsenceForm(st);
         }catch(e){
           console.error('ADMIN MUNGESAT - Shto mungesë:',e);
           alert('Nuk u hap formulari i mungesës: '+e.message);

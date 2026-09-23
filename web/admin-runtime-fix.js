@@ -123,8 +123,15 @@
     };
     document.querySelectorAll('.admin-add-absence').forEach(b=>{
       b.onclick=()=>{
-        const st=studentsData.find(s=>String(s.id)===String(b.dataset.student));
-        window.absenceForm(null,[st],subjectsData,teachersData);
+        try{
+          const st=studentsData.find(s=>String(s.id)===String(b.dataset.student));
+          if(!st)throw new Error('Nxënësi nuk u gjet.');
+          if(typeof window.absenceForm!=='function')throw new Error('Formulari i mungesës nuk është ngarkuar.');
+          window.absenceForm(null,[st],subjectsData,teachersData);
+        }catch(e){
+          console.error('ADMIN MUNGESAT - Shto mungesë:',e);
+          alert('Nuk u hap formulari i mungesës: '+e.message);
+        }
       };
     });
   };

@@ -59,7 +59,7 @@
           </div>
           <div class="admin-class-grid">
             ${activeClasses.length?activeClasses.map(x=>`
-              <button type="button" class="admin-class-card admin-absence-class-card" data-class-id="${esc(x.id)}">
+              <button type="button" class="admin-class-card admin-student-class-card" data-class-id="${esc(x.id)}">
                 <strong>${esc(x.name)}</strong><span>Klasa ${esc(x.gradeLevel)}</span>
               </button>`).join(''):'<div class="empty-state">Nuk ka klasa aktive.</div>'}
           </div>

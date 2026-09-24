@@ -181,13 +181,13 @@
       $('moduleContent').innerHTML=`
         <div class="admin-class-module">
           <div class="admin-class-module-head">
-            <div><strong>Zgjidh klasën / paralelen</strong><small>Zgjidh klasën dhe paralelen për të parë dhe menaxhuar nxënësit.</small></div>
+            <div><strong>Zgjidh klasën</strong><small>Kliko në klasë për të parë dhe menaxhuar nxënësit.</small></div>
           </div>
           <div class="admin-class-grid">
             ${activeClasses.length?activeClasses.map(x=>`
-              <button type="button" class="admin-class-card admin-student-class-card" data-class-id="${esc(x.id)}">
+              <button type="button" class="admin-class-card admin-absence-class-card" data-class-id="${esc(x.id)}">
                 <strong>${esc(x.name)}</strong><span>Klasa ${esc(x.gradeLevel)}</span>
-              </button>`).join(''):'<div class="empty-state">Nuk ka klasa/paralele aktive.</div>'}
+              </button>`).join(''):'<div class="empty-state">Nuk ka klasa aktive.</div>'}
           </div>
         </div>`;
       $('resultCount').textContent=`${activeClasses.length} klasa/paralele`;

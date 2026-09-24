@@ -166,6 +166,66 @@
     });
   };
 
+  // ADMIN: Nxënësit ndjek të njëjtin navigim standard si Mungesat: Klasat/paralelet -> nxënësit -> Klasat.
+  const _adminStudentsBase=window.students;
+  window.students=async function adminStudentsClassFirst(admin=false){
+    if(currentUser?.role!=='ADMINISTRATOR')return _adminStudentsBase(admin);
+    const [studentsData,classes]=await Promise.all([
+      api('/api/v1/management/students'),
+      api('/api/v1/management/classes')
+    ]);
+    const selected=String(window.adminStudentsClassId||'');
+    const activeClasses=(classes||[]).filter(x=>x.active!==false)
+      .sort((a,b)=>Number(a.gradeLevel)-Number(b.gradeLevel)||String(a.name).localeCompare(String(b.name),'sq',{numeric:true}));
+    if(!selected){
+      $('moduleContent').innerHTML=`
+        <div class="admin-class-module">
+          <div class="admin-class-module-head">
+            <div><strong>Zgjidh klasën / paralelen</strong><small>Zgjidh klasën dhe paralelen për të parë dhe menaxhuar nxënësit.</small></div>
+          </div>
+          <div class="admin-class-grid">
+            ${activeClasses.length?activeClasses.map(x=>`
+              <button type="button" class="admin-class-card admin-student-class-card" data-class-id="${esc(x.id)}">
+                <strong>${esc(x.name)}</strong><span>Klasa ${esc(x.gradeLevel)}</span>
+              </button>`).join(''):'<div class="empty-state">Nuk ka klasa/paralele aktive.</div>'}
+          </div>
+        </div>`;
+      $('resultCount').textContent=`${activeClasses.length} klasa/paralele`;
+      document.querySelectorAll('.admin-student-class-card').forEach(b=>{
+        b.onclick=()=>{window.adminStudentsClassId=String(b.dataset.classId);window.students(true);};
+      });
+      return;
+    }
+    const cls=activeClasses.find(x=>String(x.id)===selected);
+    if(!cls){
+      window.adminStudentsClassId='';
+      return window.students(true);
+    }
+    const classStudents=(studentsData||[]).filter(s=>String(s.classId)===selected&&s.active!==false);
+    const rows=classStudents.map(x=>[
+      `<td>${esc(x.id)}</td>`,
+      `<td><strong>${esc(x.fullName)}</strong></td>`,
+      `<td>${esc(x.birthDate||'—')}</td>`,
+      `<td>${x.active?'Aktiv':'Joaktiv'}</td>`,
+      `<td>${adminStandardButtons('student',x.id,x.fullName)}</td>`
+    ]);
+    $('moduleContent').innerHTML=`
+      <div class="section-actions" style="margin-bottom:14px">
+        <button type="button" class="secondary" id="adminStudentsBack">← Klasat</button>
+        <strong style="margin-left:8px">${esc(cls.name)}</strong>
+        <button type="button" class="primary" id="dynamicAdd">+ Shto nxënës</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr>
+        <th>ID</th><th>Emri dhe mbiemri</th><th>Datëlindja</th><th>Statusi</th><th>Veprime</th>
+      </tr></thead><tbody>
+        ${rows.length?rows.map(r=>`<tr>${r.join('')}</tr>`).join(''):'<tr><td colspan="5" class="empty-state">Nuk ka nxënës në këtë klasë/paralele.</td></tr>'}
+      </tbody></table></div>`;
+    $('resultCount').textContent=`${rows.length} nxënës · ${esc(cls.name)}`;
+    $('adminStudentsBack').onclick=()=>{window.adminStudentsClassId='';window.students(true);};
+    $('dynamicAdd').onclick=()=>studentForm(null);
+    bindAdminStandardActions();
+  };
+
   const _teacherStudentsFinal=window.students;
   window.students=async function finalStudents(admin=false){
     if(currentUser?.role!=='MESIMDHENES')return _teacherStudentsFinal(admin);

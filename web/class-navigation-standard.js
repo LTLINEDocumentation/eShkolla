@@ -27,9 +27,20 @@
         </div>
       </div>`;
     $('resultCount').textContent=`${list.length} klasa/paralele`;
-    document.querySelectorAll('.class-nav-standard-card').forEach(btn=>{
-      btn.onclick=()=>onSelect(String(btn.dataset.classId));
-    });
+    const grid=document.querySelector('.class-nav-standard-grid');
+    if(grid){
+      grid.onclick=async e=>{
+        const btn=e.target.closest('.class-nav-standard-card');
+        if(!btn||!grid.contains(btn))return;
+        e.preventDefault();
+        e.stopPropagation();
+        const classId=String(btn.dataset.classId||'');
+        if(!classId||btn.disabled)return;
+        btn.disabled=true;
+        try{await onSelect(classId);}catch(err){console.error(err);alert(err?.message||'Nuk u hap klasa.');}
+        finally{btn.disabled=false;}
+      };
+    }
   }
 
   function injectStyles(){

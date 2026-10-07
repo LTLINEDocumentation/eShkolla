@@ -12,7 +12,20 @@ async function adminClassCards(kind,classes,selectedId,onSelect){
   const active=classes.filter(x=>x.active!==false).sort((a,b)=>Number(a.gradeLevel)-Number(b.gradeLevel)||String(a.name).localeCompare(String(b.name),'sq',{numeric:true}));
   $('moduleContent').innerHTML=`<div class="admin-class-module"><div class="admin-class-module-head"><div><strong>Zgjidh klasën</strong><small>Kliko në klasë për të parë nxënësit dhe për të kryer veprimin.</small></div></div><div class="admin-class-grid">${active.length?active.map(x=>`<button type="button" class="admin-class-card ${String(x.id)===String(selectedId)?'selected':''}" data-class-id="${esc(x.id)}"><strong>${esc(x.name)}</strong><span>Klasa ${esc(x.gradeLevel)}</span></button>`).join(''):`<div class="empty-state">Nuk ka klasa aktive.</div>`}</div></div>`;
   $('resultCount').textContent=`${active.length} klasa`;
-  document.querySelectorAll('.admin-class-card').forEach(b=>b.onclick=()=>onSelect(b.dataset.classId));
+  const classGrid=document.querySelector('.admin-class-grid');
+  if(classGrid){
+    classGrid.onclick=async e=>{
+      const b=e.target.closest('.admin-class-card');
+      if(!b||!classGrid.contains(b))return;
+      e.preventDefault();
+      e.stopPropagation();
+      const classId=String(b.dataset.classId||'');
+      if(!classId||b.disabled)return;
+      b.disabled=true;
+      try{await onSelect(classId);}catch(err){console.error(err);alert(err?.message||'Nuk u hap klasa.');}
+      finally{b.disabled=false;}
+    };
+  }
   if(!document.getElementById('adminClassModuleStyles')){const st=document.createElement('style');st.id='adminClassModuleStyles';st.textContent=`
 .admin-class-module{display:grid;gap:16px}.admin-class-module-head strong{display:block;font-size:18px}.admin-class-module-head small{display:block;margin-top:4px;color:#667085}
 .admin-class-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.admin-class-card{min-height:92px;padding:14px;text-align:left;border:1px solid #dbe3ef;border-radius:12px;background:#fff;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:6px}.admin-class-card:hover,.admin-class-card.selected{border-color:#1f6feb;box-shadow:0 3px 12px rgba(16,24,40,.08)}.admin-class-card strong{font-size:18px}.admin-class-card span{font-size:13px;color:#667085}

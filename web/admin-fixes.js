@@ -23,12 +23,11 @@
   window.bindAdminFilters=function bindAdminFilters(){
     const controls=$('moduleControls'), search=$('tableSearch'), filter=$('tableFilter'), sort=$('tableSort'), clear=$('clearFilters');
     if(!controls||!search||!filter||!sort||!clear)return;
-    if(currentUser?.role!=='ADMINISTRATOR'||currentModule==='profile')return;
+    if(currentModule==='profile')return;
     const tableEl=$('moduleContent')?.querySelector('table');
     if(!tableEl)return;
 
-    controls.classList.remove('hidden');
-    const headers=[...tableEl.querySelectorAll('thead th')].map(x=>x.textContent.trim());
+        const headers=[...tableEl.querySelectorAll('thead th')].map(x=>x.textContent.trim());
     const rows=[...tableEl.querySelectorAll('tbody tr')].filter(r=>!r.querySelector('.empty-state'));
     const statusIndex=headers.findIndex(h=>h.toLocaleLowerCase('sq')==='statusi');
     const levelIndex=headers.findIndex(h=>h.toLocaleLowerCase('sq')==='niveli');

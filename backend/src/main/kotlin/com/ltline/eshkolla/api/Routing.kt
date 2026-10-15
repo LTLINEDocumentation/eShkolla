@@ -132,6 +132,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             val existing = gradeRepository.findById(id)
             if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet.")); return@put }
             val request = call.receive<GradeRequest>(); validateGrade(request)?.let { call.respond(HttpStatusCode.BadRequest, it); return@put }
+            if (user.role == "MESIMDHENES" && (request.studentId != existing.studentId || request.subjectId != existing.subjectId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Mësimdhënësi mund të ndryshojë vlerën dhe shënimin, por jo ta zhvendosë notën te nxënës ose lëndë tjetër.")); return@put }
             val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else request.teacherId
             if (teacherId == null || (user.role == "MESIMDHENES" && existing.teacherId != teacherId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni këtë notë.")); return@put }
             val student = studentRepository.findById(request.studentId)

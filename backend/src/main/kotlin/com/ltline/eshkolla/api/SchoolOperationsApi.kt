@@ -26,7 +26,10 @@ data class ScheduleDto(
     val startTime: String,
     val endTime: String,
     val room: String? = null,
-    val active: Boolean = true
+    val active: Boolean = true,
+    val className: String? = null,
+    val teacherName: String? = null,
+    val subjectName: String? = null
 )
 
 @Serializable

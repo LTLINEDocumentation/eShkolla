@@ -173,10 +173,15 @@
     };
   }
 
-  // Standardi aktivizohet vetëm për modulet që realisht ndahen sipas klasës.
-  injectStyles();
-  if(currentUser?.role==='ADMINISTRATOR')setupAdmin();
-  else if(currentUser?.role==='MESIMDHENES')setupTeacher();
-
+  // Inicializohet pas autentikimit, jo gjatë ngarkimit të skriptit kur currentUser është ende null.
+  let initializedRole='';
+  window.initializeClassNavigationStandard=function(){
+    if(!currentUser?.role)return;
+    injectStyles();
+    if(initializedRole===currentUser.role)return;
+    if(currentUser.role==='ADMINISTRATOR')setupAdmin();
+    else if(currentUser.role==='MESIMDHENES')setupTeacher();
+    initializedRole=currentUser.role;
+  };
   window.standardClassNavigationReset=resetSelection;
 })();

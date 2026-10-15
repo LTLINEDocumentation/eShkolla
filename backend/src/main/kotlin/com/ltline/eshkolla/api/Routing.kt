@@ -123,7 +123,9 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@post }
             if (user.role == "MESIMDHENES" && !teacherHasSubjectInClass(teacherId, request.subjectId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni caktim për këtë lëndë dhe klasë.")); return@post }
             val grade = GradeDto("G-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
-            call.respond(HttpStatusCode.Created, gradeRepository.save(grade))
+            val saved = gradeRepository.save(grade)
+            NotificationService.notifyStudentContacts(user.id, teacherId, request.studentId, "Nota u regjistrua", "U regjistrua nota ${request.value} për nxënësin ${student.fullName} në lëndën ${request.subjectId}.", "GRADE", saved.id)
+            call.respond(HttpStatusCode.Created, saved)
         }
         put("/grades/{id}") {
             val user = requireWriteUser() ?: return@put
@@ -138,7 +140,9 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             val student = studentRepository.findById(request.studentId)
             if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@put }
             if (user.role == "MESIMDHENES" && !teacherHasSubjectInClass(teacherId, request.subjectId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni caktim për këtë lëndë dhe klasë.")); return@put }
-            call.respond(gradeRepository.save(GradeDto(id, request.studentId, request.subjectId, teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })))
+            val saved = gradeRepository.save(GradeDto(id, request.studentId, request.subjectId, teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() }))
+            NotificationService.notifyStudentContacts(user.id, teacherId, request.studentId, "Nota u ndryshua", "Nota për nxënësin ${student.fullName} në lëndën ${request.subjectId} u ndryshua në ${request.value}.", "GRADE", saved.id)
+            call.respond(saved)
         }
         delete("/grades/{id}") {
             val user = requireWriteUser() ?: return@delete
@@ -167,7 +171,9 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@post }
             if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të regjistroni mungesë për këtë nxënës.")); return@post }
             val absence = AbsenceDto("A-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
-            call.respond(HttpStatusCode.Created, absenceRepository.save(absence))
+            val saved = absenceRepository.save(absence)
+            NotificationService.notifyStudentContacts(user.id, teacherId, request.studentId, "U regjistrua mungesa", "U regjistrua mungesa për nxënësin ${student.fullName} më ${request.date}. Statusi: ${request.status}.", "ABSENCE", saved.id)
+            call.respond(HttpStatusCode.Created, saved)
         }
         put("/absences/{id}") {
             val user = requireWriteUser() ?: return@put
@@ -179,7 +185,9 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             val student = studentRepository.findById(request.studentId)
             if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@put }
             if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni mungesë për këtë nxënës.")); return@put }
-            call.respond(absenceRepository.save(AbsenceDto(id, request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })))
+            val saved = absenceRepository.save(AbsenceDto(id, request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() }))
+            NotificationService.notifyStudentContacts(user.id, teacherId, request.studentId, "Mungesa u ndryshua", "Evidenca e mungesës për nxënësin ${student.fullName} më ${request.date} u ndryshua. Statusi: ${request.status}.", "ABSENCE", saved.id)
+            call.respond(saved)
         }
         delete("/absences/{id}") {
             val user = requireWriteUser() ?: return@delete

@@ -215,7 +215,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@post }
             val student = studentRepository.findById(request.studentId)
             if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@post }
-            if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të regjistroni mungesë për këtë nxënës.")); return@post }
+            if (user.role == "MESIMDHENES" && !teacherHasSubjectInClass(teacherId, request.subjectId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni caktim për këtë lëndë dhe klasë.")); return@post }
             val absence = AbsenceDto("A-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
             val saved = absenceRepository.save(absence)
             NotificationService.notifyStudentContacts(user.id, teacherId, request.studentId, "U regjistrua mungesa", "U regjistrua mungesa për nxënësin ${student.fullName} më ${request.date}. Statusi: ${request.status}.", "ABSENCE", saved.id)
@@ -230,7 +230,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (teacherId == null || (user.role == "MESIMDHENES" && existing.teacherId != teacherId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni këtë mungesë.")); return@put }
             val student = studentRepository.findById(request.studentId)
             if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@put }
-            if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni mungesë për këtë nxënës.")); return@put }
+            if (user.role == "MESIMDHENES" && !teacherHasSubjectInClass(teacherId, request.subjectId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni caktim për këtë lëndë dhe klasë.")); return@put }
             val saved = absenceRepository.save(AbsenceDto(id, request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() }))
             NotificationService.notifyStudentContacts(user.id, teacherId, request.studentId, "Mungesa u ndryshua", "Evidenca e mungesës për nxënësin ${student.fullName} më ${request.date} u ndryshua. Statusi: ${request.status}.", "ABSENCE", saved.id)
             call.respond(saved)

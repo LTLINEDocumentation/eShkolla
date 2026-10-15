@@ -89,7 +89,7 @@
       if(!selected){
         return standardClassPicker(classes,id=>{
           window.adminStudentsClassId=id;
-          window.students(true);
+          return window.students(true);
         });
       }
       return oldStudents(true);
@@ -103,7 +103,7 @@
       if(!selected){
         return standardClassPicker(classes,id=>{
           window.adminGradesClassId=id;
-          window.grades();
+          return window.grades();
         });
       }
       return oldGrades();
@@ -117,7 +117,7 @@
       if(!selected){
         return standardClassPicker(classes,id=>{
           window.adminAbsencesClassId=id;
-          window.absences();
+          return window.absences();
         });
       }
       return oldAbsences();
@@ -137,7 +137,7 @@
       if(!selected){
         return standardClassPicker(d.classes,id=>{
           window.teacherStudentsClassId=id;
-          window.students();
+          return window.students();
         });
       }
       return oldStudents(admin);
@@ -152,7 +152,7 @@
         return standardClassPicker(d.classes,id=>{
           window.webGradesClassId=id;
           window.webGradesSubjectId='';
-          window.grades();
+          return window.grades();
         });
       }
       return oldGrades();
@@ -166,7 +166,7 @@
       if(!selected){
         return standardClassPicker(d.classes,id=>{
           window.teacherAbsencesClassId=id;
-          window.absences();
+          return window.absences();
         });
       }
       return oldAbsences();

@@ -159,7 +159,11 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             val id = call.parameters["id"].orEmpty(); val existing = gradeRepository.findById(id)
             if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet.")); return@delete }
             if (user.role == "MESIMDHENES" && existing.teacherId != authService.teacherIdFor(bearerToken().orEmpty())) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të fshini këtë notë.")); return@delete }
-            if (gradeRepository.delete(id)) call.respond(HttpStatusCode.NoContent) else call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet."))
+            if (gradeRepository.delete(id)) {
+                val student = studentRepository.findById(existing.studentId)
+                NotificationService.notifyStudentContacts(user.id, existing.teacherId, existing.studentId, "Nota u fshi", "Nota ${existing.value} për nxënësin ${student?.fullName ?: existing.studentId} në lëndën ${existing.subjectId} u fshi.", "GRADE", existing.id)
+                call.respond(HttpStatusCode.NoContent)
+            } else call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet."))
         }
         get("/absences") {
             val user = requireUser() ?: return@get
@@ -204,7 +208,11 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             val id = call.parameters["id"].orEmpty(); val existing = absenceRepository.findById(id)
             if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Mungesa nuk u gjet.")); return@delete }
             if (user.role == "MESIMDHENES" && existing.teacherId != authService.teacherIdFor(bearerToken().orEmpty())) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të fshini këtë mungesë.")); return@delete }
-            if (absenceRepository.delete(id)) call.respond(HttpStatusCode.NoContent) else call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Mungesa nuk u gjet."))
+            if (absenceRepository.delete(id)) {
+                val student = studentRepository.findById(existing.studentId)
+                NotificationService.notifyStudentContacts(user.id, existing.teacherId, existing.studentId, "Mungesa u fshi", "Evidenca e mungesës për nxënësin ${student?.fullName ?: existing.studentId} më ${existing.date} u fshi.", "ABSENCE", existing.id)
+                call.respond(HttpStatusCode.NoContent)
+            } else call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Mungesa nuk u gjet."))
         }
     }
 }

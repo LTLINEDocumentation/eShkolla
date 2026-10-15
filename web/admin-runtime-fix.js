@@ -94,7 +94,8 @@
       return window.absences();
     }
 
-    const classStudents=(studentsData||[]).filter(s=>String(s.classId)===selected);
+    const searchQuery=String($('tableSearch')?.value||'').trim().toLocaleLowerCase('sq');
+    const classStudents=(studentsData||[]).filter(s=>String(s.classId)===selected&&(!searchQuery||String(s.fullName||'').toLocaleLowerCase('sq').includes(searchQuery)||String(s.id||'').toLocaleLowerCase('sq').includes(searchQuery)));
     const rows=classStudents.map(s=>{
       const as=(d||[]).filter(a=>String(a.studentId)===String(s.id));
       return [

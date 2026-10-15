@@ -232,6 +232,11 @@ window.classes=async function linkedClassesView(admin=false){
 };
 const _linkedStudentsOriginal=window.students;
 window.students=async function linkedStudentsView(admin=false){
+  if(currentUser?.role==='DREJTOR'){
+    const d=await api('/api/v1/management/students');
+    table(['ID','Emri dhe mbiemri','Klasa / paralelja','Datëlindja','Statusi'],d.map(x=>[x.id,x.fullName,x.className||x.classId,x.birthDate||'—',x.active?'Aktiv':'Joaktiv']));
+    return;
+  }
   if(!['PRIND','NXENES'].includes(currentUser?.role))return _linkedStudentsOriginal(admin);
   const [response,classes]=await Promise.all([api('/api/v1/students?page=1&pageSize=100'),api('/api/v1/classes')]);
   const classNames=new Map(classes.map(c=>[String(c.id),c.name]));

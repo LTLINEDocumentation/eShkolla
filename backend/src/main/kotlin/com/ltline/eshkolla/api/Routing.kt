@@ -121,7 +121,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@post }
             val student = studentRepository.findById(request.studentId)
             if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@post }
-            if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të regjistroni vlerësim për këtë nxënës.")); return@post }
+            if (user.role == "MESIMDHENES" && !teacherHasSubjectInClass(teacherId, request.subjectId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni caktim për këtë lëndë dhe klasë.")); return@post }
             val grade = GradeDto("G-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
             call.respond(HttpStatusCode.Created, gradeRepository.save(grade))
         }
@@ -136,7 +136,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (teacherId == null || (user.role == "MESIMDHENES" && existing.teacherId != teacherId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni këtë notë.")); return@put }
             val student = studentRepository.findById(request.studentId)
             if (student == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nxënësi nuk u gjet.")); return@put }
-            if (user.role == "MESIMDHENES" && !teacherHasClass(teacherId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të ndryshoni notë për këtë nxënës.")); return@put }
+            if (user.role == "MESIMDHENES" && !teacherHasSubjectInClass(teacherId, request.subjectId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni caktim për këtë lëndë dhe klasë.")); return@put }
             call.respond(gradeRepository.save(GradeDto(id, request.studentId, request.subjectId, teacherId, request.value, request.period.trim(), request.academicYear.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })))
         }
         delete("/grades/{id}") {
@@ -191,6 +191,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
 }
 
 private fun teacherHasClass(teacherId: String, classId: String): Boolean = teacherClassRepository.isAssigned(teacherId, classId)
+private fun teacherHasSubjectInClass(teacherId: String, subjectId: String, classId: String): Boolean = com.ltline.eshkolla.db.Database.connection().use { c -> c.prepareStatement("SELECT 1 FROM teacher_subjects WHERE teacher_id=? AND subject_id=? AND class_id=?").use { p -> p.setString(1, teacherId); p.setString(2, subjectId); p.setString(3, classId); p.executeQuery().use { it.next() } } }
 private fun classesForTeacher(teacherId: String): Set<String> = teacherClassRepository.getClassIdsForTeacher(teacherId)
 private suspend fun io.ktor.server.application.ApplicationCall.requireUser(): UserDto? { val user = authService.userFor(bearerToken().orEmpty()); if (user == null) respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme.")); return user }
 private suspend fun io.ktor.server.application.ApplicationCall.requireWriteUser(): UserDto? { val user = requireUser() ?: return null; if (user.role !in setOf("ADMINISTRATOR", "DREJTOR", "MESIMDHENES")) { respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni të drejtë për këtë veprim.")); return null }; return user }

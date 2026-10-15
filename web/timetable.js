@@ -1,6 +1,7 @@
 const _adminModulesBeforeTimetable=window.adminModules;
 const _baseModulesBeforeTimetable=window.baseModules;
 const _openModuleBeforeTimetable=window.openModule;
+icons.timetable='🗓️';icons.timetableSettings='⚙️';
 const weekdayNames={1:'E hënë',2:'E martë',3:'E mërkurë',4:'E enjte',5:'E premte',6:'E shtunë',7:'E diel'};
 function timetableModules(base,includeSettings=false){const modules=[...base.filter(x=>!['timetable','timetableSettings'].includes(x[0])),['timetable','Orari','Orari i klasave dhe mësimdhënësve']];if(includeSettings)modules.push(['timetableSettings','Konfigurimi i orarit','Kohëzgjatja e orëve dhe pauzat']);return modules;}
 window.adminModules=()=>timetableModules(_adminModulesBeforeTimetable(),true);

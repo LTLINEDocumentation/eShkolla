@@ -3,6 +3,8 @@ async function loadTeacherRoleData(force=false){if(teacherRoleData&&!force)retur
 function baseModules(){
   if(currentUser?.role==='MESIMDHENES') return [['classes','Klasat e mia','Klasat e caktuara'],['subjects','Lëndët e mia','Lëndët e caktuara'],['students','Nxënësit','Nxënësit e klasave të mia'],['grades','Notat','Notat e nxënësve të mi'],['absences','Mungesat','Evidenca e klasave të mia'],['notifications','Njoftimet','Njoftime dhe ndryshime të rëndësishme'],['profile','Profili','Llogaria']];
   if(currentUser?.role==='DREJTOR') return [['classes','Klasat & paralelet','Menaxhimi i klasave'],['subjects','Lëndët mësimore','Shikim i lëndëve'],['teachers','Mësimdhënësit','Menaxhimi i mësimdhënësve'],['students','Nxënësit','Regjistri i nxënësve'],['assignments','Caktimet','Mësimdhënës + lëndë + klasë'],['grades','Notat','Shikim dhe veprim i kontrolluar'],['absences','Mungesat','Shikim dhe veprim i kontrolluar'],['notifications','Njoftimet','Njoftime dhe ndryshime të rëndësishme'],['profile','Profili','Llogaria']];
+  if(currentUser?.role==='PRIND') return [['classes','Klasat e fëmijëve','Klasat e fëmijëve të lidhur'],['students','Fëmijët e mi','Të dhënat e fëmijëve të lidhur'],['grades','Notat','Vlerësimet e fëmijëve'],['absences','Mungesat','Evidenca e fëmijëve'],['notifications','Njoftimet','Njoftime dhe ndryshime të rëndësishme'],['profile','Profili','Llogaria']];
+  if(currentUser?.role==='NXENES') return [['classes','Klasa ime','Klasa e lidhur me profilin'],['students','Profili im','Të dhënat e mia'],['grades','Notat e mia','Vlerësimet e mia'],['absences','Mungesat e mia','Evidenca ime'],['notifications','Njoftimet','Njoftime dhe ndryshime të rëndësishme'],['profile','Profili','Llogaria']];
   return [['classes','Klasat','Të dhënat reale'],['students','Nxënësit','Regjistri real'],['grades','Notat','Të dhënat reale'],['absences','Mungesat','Evidenca reale'],['notifications','Njoftimet','Njoftime dhe ndryshime të rëndësishme'],['profile','Profili','Llogaria']];
 }
 const _originalSubjects=window.subjects;
@@ -219,3 +221,35 @@ async function teacherAbsenceForm(existing=null){
   });
 }
 async function teacherDelete(url,label){if(!confirm(`A jeni i sigurt që doni ta fshini ${label}?\n\nKy veprim nuk mund të zhbëhet.`))return;try{await api(url,{method:'DELETE'});teacherRoleData=null;await openModule(currentModule)}catch(e){alert(e.message)}}
+
+// Pamjet për Prind/Nxënës përdorin vetëm endpoint-et që kufizojnë të dhënat te profili i lidhur.
+const _linkedClassesOriginal=window.classes;
+window.classes=async function linkedClassesView(admin=false){
+  if(!['PRIND','NXENES'].includes(currentUser?.role))return _linkedClassesOriginal(admin);
+  const data=await api('/api/v1/classes');
+  table(['Klasa / paralelja','Niveli','Nxënës të lidhur'],data.map(x=>[x.name,x.gradeLevel,x.studentCount]));
+};
+const _linkedStudentsOriginal=window.students;
+window.students=async function linkedStudentsView(admin=false){
+  if(!['PRIND','NXENES'].includes(currentUser?.role))return _linkedStudentsOriginal(admin);
+  const [response,classes]=await Promise.all([api('/api/v1/students?page=1&pageSize=100'),api('/api/v1/classes')]);
+  const classNames=new Map(classes.map(c=>[String(c.id),c.name]));
+  const rows=(response.items||[]).map(x=>[x.fullName,classNames.get(String(x.classId))||x.classId,x.birthDate||'—',x.isActive?'Aktiv':'Joaktiv']);
+  table([currentUser.role==='PRIND'?'Fëmija':'Emri dhe mbiemri','Klasa / paralelja','Datëlindja','Statusi'],rows);
+};
+const _linkedGradesOriginal=window.grades;
+window.grades=async function linkedGradesView(){
+  if(!['PRIND','NXENES'].includes(currentUser?.role))return _linkedGradesOriginal();
+  const [gradesData,studentsResponse,subjects]=await Promise.all([api('/api/v1/grades'),api('/api/v1/students?page=1&pageSize=100'),api('/api/v1/subjects')]);
+  const studentNames=new Map((studentsResponse.items||[]).map(x=>[String(x.id),x.fullName]));
+  const subjectNames=new Map(subjects.map(x=>[String(x.id),x.name]));
+  table(['Nxënësi','Lënda','Nota','Periudha','Viti shkollor','Shënim'],gradesData.map(x=>[studentNames.get(String(x.studentId))||x.studentId,subjectNames.get(String(x.subjectId))||x.subjectId,x.value,x.period,x.academicYear,x.note||'—']));
+};
+const _linkedAbsencesOriginal=window.absences;
+window.absences=async function linkedAbsencesView(){
+  if(!['PRIND','NXENES'].includes(currentUser?.role))return _linkedAbsencesOriginal();
+  const [absenceData,studentsResponse,subjects]=await Promise.all([api('/api/v1/absences'),api('/api/v1/students?page=1&pageSize=100'),api('/api/v1/subjects')]);
+  const studentNames=new Map((studentsResponse.items||[]).map(x=>[String(x.id),x.fullName]));
+  const subjectNames=new Map(subjects.map(x=>[String(x.id),x.name]));
+  table(['Nxënësi','Lënda','Data','Statusi','Shënim'],absenceData.map(x=>[studentNames.get(String(x.studentId))||x.studentId,subjectNames.get(String(x.subjectId))||x.subjectId,x.date,x.status,x.note||'—']));
+};

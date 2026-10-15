@@ -239,9 +239,9 @@ private fun loadScopedSchedule(user: UserDto, classId: String?): List<ScheduleDt
             }
             else -> {
                 sql = if (requestedClass == null) {
-                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN classes c ON c.id=s.class_id JOIN teachers t ON t.id=s.teacher_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE s.active=TRUE ORDER BY s.weekday,s.start_time"
+                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN classes c ON c.id=s.class_id JOIN teachers t ON t.id=s.teacher_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE s.active=TRUE AND t.active=TRUE ORDER BY s.weekday,s.start_time"
                 } else {
-                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN classes c ON c.id=s.class_id JOIN teachers t ON t.id=s.teacher_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE s.active=TRUE AND s.class_id=? ORDER BY s.weekday,s.start_time"
+                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN classes c ON c.id=s.class_id JOIN teachers t ON t.id=s.teacher_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE s.active=TRUE AND t.active=TRUE AND s.class_id=? ORDER BY s.weekday,s.start_time"
                 }
                 if (requestedClass != null) params += requestedClass
             }

@@ -16,7 +16,7 @@ import java.sql.Connection
 import java.util.UUID
 
 @Serializable
-data class NotificationDto(
+data class RoleRoleNotificationDto(
     val id: String,
     val title: String,
     val message: String,
@@ -69,16 +69,17 @@ object NotificationService {
     }
 
     internal fun create(c: Connection, title: String, message: String, type: String, audienceRole: String?, targetUserId: String?, entityType: String?, entityId: String?, createdBy: String?) {
-        c.prepareStatement("INSERT INTO notifications(id,title,message,type,audience_role,target_user_id,entity_type,entity_id,created_by) VALUES(?,?,?,?,?,?,?,?,?)").use { p ->
+        c.prepareStatement("INSERT INTO notifications(id,title,message,audience,type,audience_role,target_user_id,entity_type,entity_id,created_by) VALUES(?,?,?,?,?,?,?,?,?,?)").use { p ->
             p.setString(1, "NT-" + UUID.randomUUID().toString().take(12).uppercase())
             p.setString(2, title.trim().take(180))
             p.setString(3, message.trim().take(4000))
-            p.setString(4, type)
-            p.setString(5, audienceRole)
-            p.setString(6, targetUserId)
-            p.setString(7, entityType)
-            p.setString(8, entityId)
-            p.setString(9, createdBy)
+            p.setString(4, audienceRole ?: "USER")
+            p.setString(5, type)
+            p.setString(6, audienceRole)
+            p.setString(7, targetUserId)
+            p.setString(8, entityType)
+            p.setString(9, entityId)
+            p.setString(10, createdBy)
             p.executeUpdate()
         }
     }
@@ -96,7 +97,7 @@ fun Application.configureNotificationApi(auth: AuthService) {
                                EXISTS(SELECT 1 FROM notification_reads nr WHERE nr.notification_id=n.id AND nr.user_id=?) AS is_read
                         FROM notifications n
                         LEFT JOIN users u ON u.id=n.created_by
-                        WHERE (n.target_user_id=? OR n.audience_role='ALL' OR n.audience_role=?)
+                        WHERE n.active=TRUE AND (n.target_user_id=? OR n.audience_role='ALL' OR n.audience_role=?)
                         ORDER BY n.created_at DESC
                         LIMIT 200
                     """.trimIndent()).use { p ->
@@ -138,7 +139,7 @@ fun Application.configureNotificationApi(auth: AuthService) {
                     c.prepareStatement("""
                         INSERT INTO notification_reads(notification_id,user_id)
                         SELECT n.id,? FROM notifications n
-                        WHERE (n.target_user_id=? OR n.audience_role='ALL' OR n.audience_role=?)
+                        WHERE n.active=TRUE AND (n.target_user_id=? OR n.audience_role='ALL' OR n.audience_role=?)
                         ON CONFLICT(notification_id,user_id) DO NOTHING
                     """.trimIndent()).use { p -> p.setString(1,user.id);p.setString(2,user.id);p.setString(3,user.role);p.executeUpdate() }
                 }

@@ -62,10 +62,11 @@ private fun assign(request: TimetableAssignmentRequest): AssignmentResult {
                 ps.setString(1,request.classId.trim()); ps.setInt(2,request.weekday); ps.setString(3,period.first); ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
             }
             if (classConflict != null) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.Conflict,"CLASS_SLOT_OCCUPIED","Kjo klasë e ka tashmë të zënë ditën dhe orën e zgjedhur.") }
-            val teacherConflict = connection.prepareStatement("SELECT id FROM schedules WHERE teacher_id=? AND weekday=? AND start_time=? AND active=TRUE LIMIT 1").use { ps ->
-                ps.setString(1,code.teacherId); ps.setInt(2,request.weekday); ps.setString(3,period.first); ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
+            val slotConflict = connection.prepareStatement("SELECT id FROM schedules WHERE active=TRUE AND weekday=? AND (teacher_id=? OR class_id=?) AND start_time < ? AND end_time > ? LIMIT 1").use { ps ->
+                ps.setInt(1,request.weekday); ps.setString(2,code.teacherId); ps.setString(3,request.classId.trim()); ps.setString(4,period.second); ps.setString(5,period.first)
+                ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
             }
-            if (teacherConflict != null) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.Conflict,"TEACHER_SLOT_OCCUPIED","Mësimdhënësi ${code.teacherName} e ka tashmë të zënë këtë orë.") }
+            if (slotConflict != null) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.Conflict,"SCHEDULE_CONFLICT","Mësimdhënësi ${code.teacherName} ose kjo klasë/paralele e ka të zënë këtë interval kohor.") }
             val id = "SCH-${UUID.randomUUID()}"
             connection.prepareStatement("INSERT INTO schedules(id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active) VALUES(?,?,?,?,?,?,?,?,?)").use { ps ->
                 ps.setString(1,id); ps.setString(2,request.classId.trim()); ps.setString(3,code.teacherId); ps.setString(4,code.subjectId); ps.setInt(5,request.weekday); ps.setString(6,period.first); ps.setString(7,period.second); ps.setString(8,request.room?.trim()?.takeIf { it.isNotBlank() }); ps.setBoolean(9,request.active); ps.executeUpdate()

@@ -53,11 +53,17 @@ fun Application.configureAdminCrudApi(authService:AuthService){
      c.autoCommit=false
      try{
       c.prepareStatement("UPDATE users SET username=?,full_name=?,role=?,active=? WHERE id=?").use{p->p.setString(1,r.username.trim());p.setString(2,r.fullName.trim());p.setString(3,role);p.setBoolean(4,r.active);p.setString(5,id);p.executeUpdate()}
-      c.prepareStatement("DELETE FROM parent_students WHERE user_id=?").use{p->p.setString(1,id);p.executeUpdate()}
-      c.prepareStatement("DELETE FROM student_users WHERE user_id=?").use{p->p.setString(1,id);p.executeUpdate()}
-      when(role){
-       "PRIND"->c.prepareStatement("INSERT INTO parent_students(user_id,student_id) VALUES (?,?)").use{p->p.setString(1,id);p.setString(2,studentId);p.executeUpdate()}
-       "NXENES"->c.prepareStatement("INSERT INTO student_users(user_id,student_id) VALUES (?,?)").use{p->p.setString(1,id);p.setString(2,studentId);p.executeUpdate()}
+      if(role=="PRIND"&&current=="PRIND"){
+       c.prepareStatement("DELETE FROM student_users WHERE user_id=?").use{p->p.setString(1,id);p.executeUpdate()}
+       val alreadyLinked=c.prepareStatement("SELECT 1 FROM parent_students WHERE user_id=? AND student_id=?").use{p->p.setString(1,id);p.setString(2,studentId);p.executeQuery().use{it.next()}}
+       if(!alreadyLinked)c.prepareStatement("INSERT INTO parent_students(user_id,student_id) VALUES (?,?)").use{p->p.setString(1,id);p.setString(2,studentId);p.executeUpdate()}
+      }else{
+       c.prepareStatement("DELETE FROM parent_students WHERE user_id=?").use{p->p.setString(1,id);p.executeUpdate()}
+       c.prepareStatement("DELETE FROM student_users WHERE user_id=?").use{p->p.setString(1,id);p.executeUpdate()}
+       when(role){
+        "PRIND"->c.prepareStatement("INSERT INTO parent_students(user_id,student_id) VALUES (?,?)").use{p->p.setString(1,id);p.setString(2,studentId);p.executeUpdate()}
+        "NXENES"->c.prepareStatement("INSERT INTO student_users(user_id,student_id) VALUES (?,?)").use{p->p.setString(1,id);p.setString(2,studentId);p.executeUpdate()}
+       }
       }
       if(role=="MESIMDHENES"){
        val changed=c.prepareStatement("UPDATE teachers SET full_name=?,active=TRUE WHERE user_id=?").use{p->p.setString(1,r.fullName.trim());p.setString(2,id);p.executeUpdate()}

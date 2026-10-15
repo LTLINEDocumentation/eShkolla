@@ -18,4 +18,4 @@ async function timetableEntriesView(timetableData=null){
 
 async function deleteScheduleEntry(id){if(!confirm('A jeni i sigurt që doni ta fshini këtë orë nga orari?\n\nKy veprim nuk mund të zhbëhet.'))return;try{await api('/api/v1/schedule/'+encodeURIComponent(id),{method:'DELETE'});await timetableView()}catch(e){alert(e.message)}}
 
-async function timetableView(){const data=await api('/api/v1/timetable');await timetableSettingsView(data);await timetableEntriesView(data)}
+async function timetableView(){const data=await api('/api/v1/timetable');if(!['ADMINISTRATOR','DREJTOR'].includes(currentUser?.role))await timetableSettingsView(data);await timetableEntriesView(data)}

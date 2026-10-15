@@ -99,7 +99,7 @@
       const as=(d||[]).filter(a=>String(a.studentId)===String(s.id));
       return [
         `<td><strong>${esc(s.fullName)}</strong></td>`,
-        `<td>${as.length?as.map(a=>`${esc(subjectsData.find(x=>String(x.id)===String(a.subjectId))?.name||a.subjectId)}: ${esc(a.date)} — ${esc(a.status)}`).join('<br>'):'—'}</td>`,
+        `<td>${as.length?as.map(a=>`${esc(subjectsData.find(x=>String(x.id)===String(a.subjectId))?.name||a.subjectId)}: ${esc(a.date)} — ${esc(absenceStatusText(a.status))}`).join('<br>'):'—'}</td>`,
         `<td>${as.length?as.map(a=>esc(a.note||'—')).join('<br>'):'—'}</td>`,
         `<td><button type="button" class="secondary admin-add-absence" data-student="${esc(s.id)}">+ Shto mungesë</button></td>`
       ];

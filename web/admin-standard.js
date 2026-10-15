@@ -59,7 +59,8 @@ async function grades(){
   $('adminGradesBack').onclick=async()=>{window.adminGradesClassId='';await adminClassCards('grade',classes,'',id=>{window.adminGradesClassId=String(id);grades();});};
   document.querySelectorAll('.admin-add-grade').forEach(b=>b.onclick=()=>{const st=studentsData.find(s=>s.id===b.dataset.student);gradeForm(null,[st],subjectsData,teachersData)});
 }
-async function adminAbsencesBackToClasses(){window.adminAbsencesClassId='';const classes=await api('/api/v1/management/classes');await adminClassCards('absence',classes,'',id=>{window.adminAbsencesClassId=String(id);window.absences();});}\nasync function absences(){
+async function adminAbsencesBackToClasses(){window.adminAbsencesClassId='';const classes=await api('/api/v1/management/classes');await adminClassCards('absence',classes,'',id=>{window.adminAbsencesClassId=String(id);window.absences();});}
+async function absences(){
   const [d,studentsData,subjectsData,teachersData,classes]=await Promise.all([api('/api/v1/management/absences'),api('/api/v1/management/students'),api('/api/v1/management/subjects'),api('/api/v1/management/teachers'),api('/api/v1/management/classes')]);
   const nav=adminClassNavigation('adminAbsencesClassId',()=>absences());
   const selected=nav.selected();

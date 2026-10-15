@@ -192,5 +192,30 @@ window.absences=async function roleAbsences(){
   document.querySelectorAll('.teacher-absence-edit').forEach(b=>b.onclick=()=>{const x=rows.find(v=>v.id===b.dataset.id);if(x)teacherAbsenceForm(x)});
   document.querySelectorAll('.teacher-absence-delete').forEach(b=>b.onclick=()=>teacherDelete('/api/v1/absences/'+encodeURIComponent(b.dataset.id),'mungesën'));
 }
-async function teacherAbsenceForm(existing=null){const d=await loadTeacherRoleData();const body=`<label>Nxënësi<select name="studentId" required>${d.students.filter(x=>x.active).map(x=>`<option value="${esc(x.id)}" ${existing?.studentId===x.id?'selected':''}>${esc(x.fullName)} — ${esc(x.className)}</option>`).join('')}</select></label><label>Lënda<select name="subjectId" required>${d.subjects.map(x=>`<option value="${esc(x.id)}" ${existing?.subjectId===x.id?'selected':''}>${esc(x.name)} — ${esc(x.classIds?.length||0)} klasa</option>`).join('')}</select></label>`+field('date','Data','date',`required value="${esc(existing?.date||new Date().toISOString().slice(0,10))}"`)+`<label>Statusi<select name="status" required>${['Mungon','Me arsye','Pa arsye','E arsyetuar'].map(x=>`<option ${existing?.status===x?'selected':''}>${x}</option>`).join('')}</select></label>`+field('note','Shënim','text',`value="${esc(existing?.note||'')}"`);modal(existing?'Rregullo mungesën':'Shto mungesë',body,async f=>api(existing?`/api/v1/absences/${encodeURIComponent(existing.id)}`:'/api/v1/absences',{method:existing?'PUT':'POST',body:JSON.stringify({studentId:f.get('studentId'),subjectId:f.get('subjectId'),teacherId:d.teacherId,date:f.get('date'),status:f.get('status'),note:f.get('note')||null})}));}
+async function teacherAbsenceForm(existing=null){
+  const d=await loadTeacherRoleData(true);
+  const classId=String(window.teacherAbsencesClassId||'');
+  const classStudents=(d.students||[]).filter(x=>x.active&&String(x.classId)===classId);
+  const classSubjects=(d.subjects||[]).filter(x=>(x.classIds||[]).some(id=>String(id)===classId));
+  if(!classId)throw new Error('Zgjidhni klasën para regjistrimit të mungesës.');
+  if(!classStudents.length)throw new Error('Kjo klasë nuk ka nxënës aktivë.');
+  if(!classSubjects.length)throw new Error('Kjo klasë nuk ka lëndë të caktuara.');
+  const studentOptions=classStudents.map(x=>`<option value="${esc(x.id)}" ${existing?.studentId===x.id?'selected':''}>${esc(x.fullName)} — ${esc(x.className||classId)}</option>`).join('');
+  const subjectOptions=classSubjects.map(x=>`<option value="${esc(x.id)}" ${existing?.subjectId===x.id?'selected':''}>${esc(x.name)}</option>`).join('');
+  const body=`<label>Nxënësi<select name="studentId" required>${studentOptions}</select></label><label>Lënda<select name="subjectId" required>${subjectOptions}</select></label>`+
+    field('date','Data','date',`required value="${esc(existing?.date||new Date().toISOString().slice(0,10))}"`)+
+    `<label>Statusi<select name="status" required>${['Mungon','Me arsye','Pa arsye','E arsyetuar'].map(x=>`<option ${existing?.status===x?'selected':''}>${x}</option>`).join('')}</select></label>`+
+    field('note','Shënim','text',`value="${esc(existing?.note||'')}"`);
+  modal(existing?'Rregullo mungesën':'Shto mungesë',body,async f=>{
+    const studentId=String(f.get('studentId')||'');
+    const subjectId=String(f.get('subjectId')||'');
+    if(!classStudents.some(x=>String(x.id)===studentId))throw new Error('Nxënësi nuk i përket klasës së zgjedhur.');
+    if(!classSubjects.some(x=>String(x.id)===subjectId))throw new Error('Lënda nuk është caktuar për këtë klasë.');
+    await api(existing?`/api/v1/absences/${encodeURIComponent(existing.id)}`:'/api/v1/absences',{
+      method:existing?'PUT':'POST',
+      body:JSON.stringify({studentId,subjectId,teacherId:d.teacherId,date:f.get('date'),status:f.get('status'),note:f.get('note')||null})
+    });
+    teacherRoleData=null;
+  });
+}
 async function teacherDelete(url,label){if(!confirm(`A jeni i sigurt që doni ta fshini ${label}?\n\nKy veprim nuk mund të zhbëhet.`))return;try{await api(url,{method:'DELETE'});teacherRoleData=null;await openModule(currentModule)}catch(e){alert(e.message)}}

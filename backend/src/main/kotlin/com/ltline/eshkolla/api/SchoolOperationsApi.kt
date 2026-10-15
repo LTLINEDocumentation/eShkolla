@@ -251,30 +251,56 @@ fun Application.configureSchoolOperationsApi(authService: AuthService) {
 
             get("/reports/academic") {
                 val user = requireSchoolUser(call, authService) ?: return@get
-                val requestedStudentId = call.request.queryParameters["studentId"]
+                val requestedStudentId = call.request.queryParameters["studentId"]?.takeIf { it.isNotBlank() }
+
                 val studentId = when (user.role) {
-                    "NXENES" -> studentForUser(user.id)
-                    "PRIND" -> requestedStudentId?.takeIf { childOf(user.id, it) }
-                    else -> requestedStudentId
+                    "NXENES" -> {
+                        val linkedStudentId = studentForUser(user.id)
+                        if (linkedStudentId == null || (requestedStudentId != null && requestedStudentId != linkedStudentId)) {
+                            call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje në raportin e këtij nxënësi."))
+                            return@get
+                        }
+                        linkedStudentId
+                    }
+                    "PRIND" -> {
+                        if (requestedStudentId != null && !childOf(user.id, requestedStudentId)) {
+                            call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Mund të shihni vetëm raportet e fëmijëve të lidhur me llogarinë tuaj."))
+                            return@get
+                        }
+                        requestedStudentId
+                    }
+                    "MESIMDHENES" -> {
+                        if (requestedStudentId != null && !teacherCanSeeStudent(user.id, requestedStudentId)) {
+                            call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Mund të shihni vetëm nxënësit e klasave që ju janë caktuar."))
+                            return@get
+                        }
+                        requestedStudentId
+                    }
+                    "ADMINISTRATOR", "DREJTOR" -> requestedStudentId
+                    else -> {
+                        call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje në raportet akademike."))
+                        return@get
+                    }
+                }
+
+                val scope = when {
+                    studentId != null -> "s.id=?"
+                    user.role == "PRIND" -> "s.active=TRUE AND s.id IN (SELECT student_id FROM parent_students WHERE user_id=?)"
+                    user.role == "MESIMDHENES" -> "s.active=TRUE AND s.class_id IN (SELECT tc.class_id FROM teacher_classes tc JOIN teachers t ON t.id=tc.teacher_id WHERE t.user_id=? AND t.active=TRUE)"
+                    else -> "s.active=TRUE"
                 }
                 val rows = Database.connection().use { connection ->
-                    val sql = if (studentId != null) {
-                        "SELECT s.id,s.full_name,s.class_id,COUNT(DISTINCT g.id) grade_count," +
-                            "COALESCE(AVG(g.value),0) average_grade,COUNT(DISTINCT a.id) absence_count," +
-                            "COUNT(DISTINCT CASE WHEN a.status='E_ARSYESHME' THEN a.id END) justified_absences," +
-                            "COUNT(DISTINCT CASE WHEN a.status='E_PAAFTESUAR' THEN a.id END) unexcused_absences " +
-                            "FROM students s LEFT JOIN grades g ON g.student_id=s.id LEFT JOIN absences a ON a.student_id=s.id " +
-                            "WHERE s.id=? GROUP BY s.id,s.full_name,s.class_id"
-                    } else {
-                        "SELECT s.id,s.full_name,s.class_id,COUNT(DISTINCT g.id) grade_count," +
-                            "COALESCE(AVG(g.value),0) average_grade,COUNT(DISTINCT a.id) absence_count," +
-                            "COUNT(DISTINCT CASE WHEN a.status='E_ARSYESHME' THEN a.id END) justified_absences," +
-                            "COUNT(DISTINCT CASE WHEN a.status='E_PAAFTESUAR' THEN a.id END) unexcused_absences " +
-                            "FROM students s LEFT JOIN grades g ON g.student_id=s.id LEFT JOIN absences a ON a.student_id=s.id " +
-                            "WHERE s.active=TRUE GROUP BY s.id,s.full_name,s.class_id ORDER BY s.full_name"
-                    }
+                    val sql = "SELECT s.id,s.full_name,s.class_id,COUNT(DISTINCT g.id) grade_count," +
+                        "COALESCE(AVG(g.value),0) average_grade,COUNT(DISTINCT a.id) absence_count," +
+                        "COUNT(DISTINCT CASE WHEN a.status='E_ARSYESHME' THEN a.id END) justified_absences," +
+                        "COUNT(DISTINCT CASE WHEN a.status='E_PAAFTESUAR' THEN a.id END) unexcused_absences " +
+                        "FROM students s LEFT JOIN grades g ON g.student_id=s.id LEFT JOIN absences a ON a.student_id=s.id " +
+                        "WHERE $scope GROUP BY s.id,s.full_name,s.class_id ORDER BY s.full_name"
                     connection.prepareStatement(sql).use { ps ->
-                        if (studentId != null) ps.setString(1, studentId)
+                        when {
+                            studentId != null -> ps.setString(1, studentId)
+                            user.role == "PRIND" || user.role == "MESIMDHENES" -> ps.setString(1, user.id)
+                        }
                         ps.executeQuery().use { rs ->
                             buildList {
                                 while (rs.next()) {
@@ -338,6 +364,18 @@ private fun studentForUser(userId: String): String? = Database.connection().use 
 
 private fun childOf(userId: String, studentId: String): Boolean = Database.connection().use { connection ->
     connection.prepareStatement("SELECT 1 FROM parent_students WHERE user_id=? AND student_id=? LIMIT 1").use { ps ->
+        ps.setString(1, userId)
+        ps.setString(2, studentId)
+        ps.executeQuery().use { it.next() }
+    }
+}
+
+
+private fun teacherCanSeeStudent(userId: String, studentId: String): Boolean = Database.connection().use { connection ->
+    connection.prepareStatement(
+        "SELECT 1 FROM students s JOIN teacher_classes tc ON tc.class_id=s.class_id " +
+            "JOIN teachers t ON t.id=tc.teacher_id WHERE t.user_id=? AND t.active=TRUE AND s.id=? LIMIT 1"
+    ).use { ps ->
         ps.setString(1, userId)
         ps.setString(2, studentId)
         ps.executeQuery().use { it.next() }

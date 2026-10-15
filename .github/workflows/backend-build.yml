@@ -45,6 +45,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Check web JavaScript syntax
+        run: |
+          for file in web/*.js; do
+            echo "Checking $file"
+            node --check "$file"
+          done
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:

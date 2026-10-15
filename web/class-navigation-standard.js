@@ -89,7 +89,7 @@
       if(!selected){
         return standardClassPicker(classes,id=>{
           window.adminStudentsClassId=id;
-          window.students(true);
+          return window.students(true);
         });
       }
       return oldStudents(true);
@@ -98,15 +98,45 @@
     window.grades=async function standardAdminGrades(){
       if(currentUser?.role!=='ADMINISTRATOR')return oldGrades();
       const selected=String(window.adminGradesClassId||'');
-      const classes=await api('/api/v1/management/classes');
+      const [classes,allGrades,allStudents]=await Promise.all([
+        api('/api/v1/management/classes'),
+        selected?api('/api/v1/management/grades'):Promise.resolve([]),
+        selected?api('/api/v1/management/students'):Promise.resolve([])
+      ]);
       injectStyles();
       if(!selected){
         return standardClassPicker(classes,id=>{
           window.adminGradesClassId=id;
-          window.grades();
+          return window.grades();
         });
       }
-      return oldGrades();
+      const cls=(classes||[]).find(x=>String(x.id)===selected&&x.active!==false);
+      if(!cls){
+        window.adminGradesClassId='';
+        return window.grades();
+      }
+      const studentIds=new Set((allStudents||[]).filter(s=>String(s.classId)===selected).map(s=>String(s.id)));
+      const rows=(allGrades||[]).filter(g=>studentIds.has(String(g.studentId))).map(g=>[
+        `<td>${esc(g.studentName||g.studentId||'—')}</td>`,
+        `<td>${esc(g.subjectName||g.subjectId||'—')}</td>`,
+        `<td>${esc(g.teacherName||'—')}</td>`,
+        `<td>${esc(g.value??'—')}</td>`,
+        `<td>${esc(g.period||'—')}</td>`,
+        `<td>${esc(g.academicYear||'—')}</td>`,
+        `<td>${esc(g.note||'—')}</td>`
+      ]);
+      $('moduleContent').innerHTML=`
+        <div class="section-actions" style="margin-bottom:14px">
+          <button type="button" class="secondary class-nav-standard-back" id="adminGradesBack">← Klasat</button>
+          <strong>${esc(cls.name)}</strong>
+        </div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>Nxënësi</th><th>Lënda</th><th>Mësimdhënësi</th><th>Nota</th><th>Periudha</th><th>Viti shkollor</th><th>Vlerësimi</th>
+        </tr></thead><tbody>
+          ${rows.length?rows.map(row=>`<tr>${row.join('')}</tr>`).join(''):'<tr><td colspan="7" class="empty-state">Nuk ka nota të regjistruara për këtë klasë.</td></tr>'}
+        </tbody></table></div>`;
+      $('resultCount').textContent=`${rows.length} nota · ${esc(cls.name)}`;
+      $('adminGradesBack').onclick=()=>{window.adminGradesClassId='';window.grades();};
     };
 
     window.absences=async function standardAdminAbsences(){
@@ -117,7 +147,7 @@
       if(!selected){
         return standardClassPicker(classes,id=>{
           window.adminAbsencesClassId=id;
-          window.absences();
+          return window.absences();
         });
       }
       return oldAbsences();
@@ -137,7 +167,7 @@
       if(!selected){
         return standardClassPicker(d.classes,id=>{
           window.teacherStudentsClassId=id;
-          window.students();
+          return window.students();
         });
       }
       return oldStudents(admin);
@@ -152,7 +182,7 @@
         return standardClassPicker(d.classes,id=>{
           window.webGradesClassId=id;
           window.webGradesSubjectId='';
-          window.grades();
+          return window.grades();
         });
       }
       return oldGrades();
@@ -166,17 +196,22 @@
       if(!selected){
         return standardClassPicker(d.classes,id=>{
           window.teacherAbsencesClassId=id;
-          window.absences();
+          return window.absences();
         });
       }
       return oldAbsences();
     };
   }
 
-  // Standardi aktivizohet vetëm për modulet që realisht ndahen sipas klasës.
-  injectStyles();
-  if(currentUser?.role==='ADMINISTRATOR')setupAdmin();
-  else if(currentUser?.role==='MESIMDHENES')setupTeacher();
-
+  // Inicializohet pas autentikimit, jo gjatë ngarkimit të skriptit kur currentUser është ende null.
+  let initializedRole='';
+  window.initializeClassNavigationStandard=function(){
+    if(!currentUser?.role)return;
+    injectStyles();
+    if(initializedRole===currentUser.role)return;
+    if(currentUser.role==='ADMINISTRATOR')setupAdmin();
+    else if(currentUser.role==='MESIMDHENES')setupTeacher();
+    initializedRole=currentUser.role;
+  };
   window.standardClassNavigationReset=resetSelection;
 })();

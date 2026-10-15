@@ -51,7 +51,11 @@ fun Application.configureGradeChangeApi(auth:AuthService){
     c.prepareStatement("INSERT INTO grade_change_requests(id,grade_id,current_value,student_id,subject_id,teacher_id,proposed_value,period,academic_year,note,requested_by,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,\'PENDING\')").use{p->p.setString(1,id);p.setString(2,req.gradeId);if(currentValue==null)p.setNull(3,java.sql.Types.INTEGER)else p.setInt(3,currentValue);p.setString(4,studentId);p.setString(5,subjectId);p.setString(6,teacherId);p.setInt(7,req.value);p.setString(8,req.period.trim());p.setString(9,req.academicYear.trim());p.setString(10,req.note?.trim()?.takeIf{it.isNotBlank()});p.setString(11,user.id);p.executeUpdate()}
     c.commit();true
    }catch(e:SQLException){c.rollback();throw e}finally{c.autoCommit=true}}
-   if(created)call.respond(HttpStatusCode.Created,mapOf("id" to id,"status" to "PENDING"))
+   if(created){
+    val details=Database.connection().use{c->c.prepareStatement("SELECT teacher_id,student_id,subject_id,proposed_value FROM grade_change_requests WHERE id=?").use{p->p.setString(1,id);p.executeQuery().use{rs->if(rs.next())listOf(rs.getString(1),rs.getString(2),rs.getString(3),rs.getInt(4).toString())else null}}}
+    if(details!=null)NotificationService.notifyTeacherById(details[0],"Kërkesë për ndryshim note","Drejtori ka propozuar notën ${details[3]} për nxënësin ${details[1]} në lëndën ${details[2]}. Ju lutemi shqyrtojeni kërkesën.","GRADE_CHANGE_REQUEST",id,user.id)
+    call.respond(HttpStatusCode.Created,mapOf("id" to id,"status" to "PENDING"))
+   }
   }
   post("/{id}/decision") {
    val user=gradeChangeUser(call,auth)?:return@post
@@ -74,7 +78,15 @@ fun Application.configureGradeChangeApi(auth:AuthService){
     c.prepareStatement("UPDATE grade_change_requests SET status=?,reviewed_by=?,review_note=?,reviewed_at=CURRENT_TIMESTAMP WHERE id=?").use{p->p.setString(1,if(decision=="APPROVE")"APPROVED" else "REJECTED");p.setString(2,user.id);p.setString(3,req.note?.trim()?.takeIf{it.isNotBlank()});p.setString(4,id);p.executeUpdate()}
     c.commit();true
    }catch(e:SQLException){c.rollback();throw e}finally{c.autoCommit=true}}
-   if(done)call.respond(mapOf("id" to id,"status" to if(decision=="APPROVE")"APPROVED" else "REJECTED"))
+   if(done){
+    val requester=Database.connection().use{c->c.prepareStatement("SELECT requested_by FROM grade_change_requests WHERE id=?").use{p->p.setString(1,id);p.executeQuery().use{rs->if(rs.next())rs.getString(1)else null}}}
+    if(requester!=null)NotificationService.notifyUser(requester,if(decision=="APPROVE")"Ndryshimi i notës u aprovua" else "Ndryshimi i notës u refuzua","Mësimdhënësi e ka ${if(decision=="APPROVE")"aprovuar" else "refuzuar"} propozimin tuaj për nxënësin.","GRADE_CHANGE_DECISION","GRADE_CHANGE_REQUEST",id,user.id)
+    if(decision=="APPROVE"){
+     val details=Database.connection().use{c->c.prepareStatement("SELECT student_id,subject_id,teacher_id,grade_id FROM grade_change_requests WHERE id=?").use{p->p.setString(1,id);p.executeQuery().use{rs->if(rs.next())listOf(rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(4) ?: id)else null}}}
+     if(details!=null)NotificationService.notifyStudentContacts(user.id,details[2],details[0],"Nota u përditësua","Nota për nxënësin ${details[0]} në lëndën ${details[1]} u përditësua pas aprovimit.","GRADE",details[3])
+    }
+    call.respond(mapOf("id" to id,"status" to if(decision=="APPROVE")"APPROVED" else "REJECTED"))
+   }
   }
  }}
 }

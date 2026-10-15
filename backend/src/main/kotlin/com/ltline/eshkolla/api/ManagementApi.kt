@@ -29,7 +29,7 @@ data class ManagementClass(val id: String, val name: String, val gradeLevel: Int
 data class TeacherAssignmentRequest(val teacherId: String, val classId: String)
 
 @Serializable
-data class UserManagement(val id: String, val username: String, val fullName: String, val role: String, val active: Boolean)
+data class UserManagement(val id: String, val username: String, val fullName: String, val role: String, val active: Boolean, val studentId: String? = null)
 
 @Serializable
 data class UserStatusRequest(val active: Boolean)
@@ -79,8 +79,8 @@ fun Application.configureManagementApi(authService: AuthService) {
             get("/users") {
                 val user = call.managementUser(authService) ?: return@get
                 if (user.role != "ADMINISTRATOR") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm administratori menaxhon përdoruesit.")); return@get }
-                val users = Database.connection().use { c -> c.prepareStatement("SELECT id,username,full_name,role,active FROM users ORDER BY full_name").use { ps -> ps.executeQuery().use { rs -> buildList {
-                    while (rs.next()) add(UserManagement(rs.getString("id"), rs.getString("username"), rs.getString("full_name"), rs.getString("role"), rs.getBoolean("active")))
+                val users = Database.connection().use { c -> c.prepareStatement("SELECT u.id,u.username,u.full_name,u.role,u.active,COALESCE((SELECT ps.student_id FROM parent_students ps WHERE ps.user_id=u.id ORDER BY ps.student_id LIMIT 1),(SELECT su.student_id FROM student_users su WHERE su.user_id=u.id LIMIT 1)) AS student_id FROM users u ORDER BY u.full_name").use { ps -> ps.executeQuery().use { rs -> buildList {
+                    while (rs.next()) add(UserManagement(rs.getString("id"), rs.getString("username"), rs.getString("full_name"), rs.getString("role"), rs.getBoolean("active"), rs.getString("student_id")))
                 } } } }
                 call.respond(users)
             }

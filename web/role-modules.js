@@ -187,7 +187,9 @@ window.absences=async function roleAbsences(){
     return;
   }
   const rows=d.absences.filter(x=>String(x.classId||d.students.find(s=>s.id===x.studentId)?.classId)===String(selected));
-  $('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button type="button" class="secondary" id="teacherAbsencesBack">← Klasat</button><button class="primary" id="dynamicAdd">+ Shto mungesë</button></div><div class="table-wrap"><table><thead><tr>${['Nxënësi','Lënda','Data','Statusi','Shënim','Veprime'].map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(x=>`<tr><td>${esc(x.studentName)}</td><td>${esc(x.subjectName)}</td><td>${esc(x.date)}</td><td>${esc(x.status)}</td><td>${esc(x.note||'—')}</td><td><div class="section-actions"><button type="button" class="secondary teacher-absence-edit" data-id="${esc(x.id)}">Rregullo</button><button type="button" class="secondary teacher-absence-delete" data-id="${esc(x.id)}">Fshij</button></div></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Nuk ka mungesa të regjistruara për këtë klasë.</td></tr>`}</tbody></table></div>`;
+  const absenceStatusLabel=status=>['E_ARSYESHME','Me arsye','E arsyetuar'].includes(status)?'E arsyeshme':'E paarsyeshme';
+  const absenceStatusValue=status=>['E_ARSYESHME','Me arsye','E arsyetuar'].includes(status)?'E_ARSYESHME':'E_PAAFTESUAR';
+  $('moduleContent').innerHTML=`<div class="section-actions" style="margin-bottom:14px"><button type="button" class="secondary" id="teacherAbsencesBack">← Klasat</button><button class="primary" id="dynamicAdd">+ Shto mungesë</button></div><div class="table-wrap"><table><thead><tr>${['Nxënësi','Lënda','Data','Statusi','Shënim','Veprime'].map(x=>`<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(x=>`<tr><td>${esc(x.studentName)}</td><td>${esc(x.subjectName)}</td><td>${esc(x.date)}</td><td>${esc(absenceStatusLabel(x.status))}</td><td>${esc(x.note||'—')}</td><td><div class="section-actions"><button type="button" class="secondary teacher-absence-edit" data-id="${esc(x.id)}">Rregullo</button><button type="button" class="secondary teacher-absence-delete" data-id="${esc(x.id)}">Fshij</button></div></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Nuk ka mungesa të regjistruara për këtë klasë.</td></tr>`}</tbody></table></div>`;
   $('resultCount').textContent=`${rows.length} mungesa · ${esc(cls.name)}`;
   $('teacherAbsencesBack').onclick=()=>{window.teacherAbsencesClassId='';absences();};
   $('dynamicAdd').onclick=()=>teacherAbsenceForm();
@@ -206,7 +208,7 @@ async function teacherAbsenceForm(existing=null){
   const subjectOptions=classSubjects.map(x=>`<option value="${esc(x.id)}" ${existing?.subjectId===x.id?'selected':''}>${esc(x.name)}</option>`).join('');
   const body=`<label>Nxënësi<select name="studentId" required>${studentOptions}</select></label><label>Lënda<select name="subjectId" required>${subjectOptions}</select></label>`+
     field('date','Data','date',`required value="${esc(existing?.date||new Date().toISOString().slice(0,10))}"`)+
-    `<label>Statusi<select name="status" required>${['Mungon','Me arsye','Pa arsye','E arsyetuar'].map(x=>`<option ${existing?.status===x?'selected':''}>${x}</option>`).join('')}</select></label>`+
+    `<label>Statusi<select name="status" required><option value="E_ARSYESHME" ${existing&&absenceStatusValue(existing.status)==='E_ARSYESHME'?'selected':''}>E arsyeshme</option><option value="E_PAAFTESUAR" ${existing&&absenceStatusValue(existing.status)==='E_PAAFTESUAR'?'selected':''}>E paarsyeshme</option></select></label>`+
     field('note','Shënim','text',`value="${esc(existing?.note||'')}"`);
   modal(existing?'Rregullo mungesën':'Shto mungesë',body,async f=>{
     const studentId=String(f.get('studentId')||'');

@@ -49,11 +49,16 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
 
         get("/classes") {
             val user = requireUser() ?: return@get
-            val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else call.request.queryParameters["teacherId"]?.trim()
+            val teacherId = when (user.role) {
+                "MESIMDHENES" -> authService.teacherIdFor(bearerToken().orEmpty())
+                "ADMINISTRATOR", "DREJTOR" -> call.request.queryParameters["teacherId"]?.trim()
+                else -> null
+            }
             if (user.role == "MESIMDHENES" && teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@get }
             val allowed = teacherId?.let(::classesForTeacher)
-            val classes = studentRepository.findAll().groupBy { it.classId }
-                .filter { allowed == null || it.key in allowed }
+            val linkedStudents = if (user.role in setOf("PRIND", "NXENES")) linkedStudentIds(user.id, user.role) else null
+            val visibleStudents = studentRepository.findAll().filter { (allowed == null || it.classId in allowed) && (linkedStudents == null || it.id in linkedStudents) }
+            val classes = visibleStudents.groupBy { it.classId }
                 .map { (classId, students) -> SchoolClassDto(classId, "Klasa $classId", classId.removePrefix("C").toIntOrNull()?.plus(4) ?: 8, teacherId ?: "M001", students.count { it.isActive }) }
                 .sortedBy { it.id }
             call.respond(classes)
@@ -65,16 +70,18 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
                 val teacherId = authService.teacherIdFor(bearerToken().orEmpty())
                 if (teacherId == null || !teacherHasClass(teacherId, classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Kjo klasë nuk është pjesë e ngarkesës së mësimdhënësit.")); return@get }
             }
-            call.respond(studentRepository.findAll().filter { it.classId == classId && it.isActive })
+            val linkedStudents = if (user.role in setOf("PRIND", "NXENES")) linkedStudentIds(user.id, user.role) else null
+            call.respond(studentRepository.findAll().filter { it.classId == classId && it.isActive && (linkedStudents == null || it.id in linkedStudents) })
         }
         get("/students") {
             val user = requireUser() ?: return@get
             val allowed = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty())?.let(::classesForTeacher) else null
+            val linkedStudents = if (user.role in setOf("PRIND", "NXENES")) linkedStudentIds(user.id, user.role) else null
             val search = call.request.queryParameters["search"]?.trim()?.lowercase().orEmpty()
             val active = call.request.queryParameters["active"]?.toBooleanStrictOrNull()
             val page = call.request.queryParameters["page"]?.toIntOrNull()?.coerceAtLeast(1) ?: 1
             val pageSize = call.request.queryParameters["pageSize"]?.toIntOrNull()?.coerceIn(1, 100) ?: 20
-            val all = studentRepository.findAll().filter { (allowed == null || it.classId in allowed) && (search.isBlank() || it.fullName.lowercase().contains(search) || it.id.lowercase().contains(search)) && (active == null || it.isActive == active) }
+            val all = studentRepository.findAll().filter { (allowed == null || it.classId in allowed) && (linkedStudents == null || it.id in linkedStudents) && (search.isBlank() || it.fullName.lowercase().contains(search) || it.id.lowercase().contains(search)) && (active == null || it.isActive == active) }
             val from = ((page - 1) * pageSize).coerceAtMost(all.size); val to = (from + pageSize).coerceAtMost(all.size)
             call.respond(PagedResponse(all.subList(from, to), page, pageSize, all.size))
         }
@@ -86,6 +93,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
                 val teacherId = authService.teacherIdFor(bearerToken().orEmpty())
                 if (teacherId == null || student.classId !in classesForTeacher(teacherId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Ky nxënës nuk është pjesë e ngarkesës së mësimdhënësit.")); return@get }
             }
+            if (user.role in setOf("PRIND", "NXENES") && student.id !in linkedStudentIds(user.id, user.role)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje te të dhënat e këtij nxënësi.")); return@get }
             call.respond(student)
         }
         post("/students") {
@@ -110,8 +118,9 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (user.role == "MESIMDHENES" && teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@get }
             val classId = call.request.queryParameters["classId"]?.trim(); val studentId = call.request.queryParameters["studentId"]?.trim()
             if (user.role == "MESIMDHENES" && classId != null && !teacherHasClass(teacherId!!, classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje në këtë klasë.")); return@get }
-            val studentIds = classId?.let { value -> studentRepository.findAll().filter { it.classId == value }.map { it.id }.toSet() }
-            call.respond(gradeRepository.findAll(studentId, teacherId).filter { studentIds == null || it.studentId in studentIds })
+            val classStudentIds = classId?.let { value -> studentRepository.findAll().filter { it.classId == value }.map { it.id }.toSet() }
+            val linkedStudents = if (user.role in setOf("PRIND", "NXENES")) linkedStudentIds(user.id, user.role) else null
+            call.respond(gradeRepository.findAll(studentId, teacherId).filter { (classStudentIds == null || it.studentId in classStudentIds) && (linkedStudents == null || it.studentId in linkedStudents) })
         }
         post("/grades") {
             val user = requireWriteUser() ?: return@post
@@ -161,7 +170,8 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
                 val student = studentRepository.findById(studentId)
                 if (student == null || !teacherHasClass(teacherId!!, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje te ky nxënës.")); return@get }
             }
-            call.respond(absenceRepository.findAll(studentId, teacherId))
+            val linkedStudents = if (user.role in setOf("PRIND", "NXENES")) linkedStudentIds(user.id, user.role) else null
+            call.respond(absenceRepository.findAll(studentId, teacherId).filter { linkedStudents == null || it.studentId in linkedStudents })
         }
         post("/absences") {
             val user = requireWriteUser() ?: return@post; val request = call.receive<AbsenceRequest>(); validateAbsence(request)?.let { call.respond(HttpStatusCode.BadRequest, it); return@post }
@@ -195,6 +205,21 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Mungesa nuk u gjet.")); return@delete }
             if (user.role == "MESIMDHENES" && existing.teacherId != authService.teacherIdFor(bearerToken().orEmpty())) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të fshini këtë mungesë.")); return@delete }
             if (absenceRepository.delete(id)) call.respond(HttpStatusCode.NoContent) else call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Mungesa nuk u gjet."))
+        }
+    }
+}
+
+
+private fun linkedStudentIds(userId: String, role: String): Set<String> {
+    val sql = when (role) {
+        "PRIND" -> "SELECT student_id FROM parent_students WHERE user_id=?"
+        "NXENES" -> "SELECT student_id FROM student_users WHERE user_id=?"
+        else -> return emptySet()
+    }
+    return com.ltline.eshkolla.db.Database.connection().use { c ->
+        c.prepareStatement(sql).use { p ->
+            p.setString(1, userId)
+            p.executeQuery().use { rs -> buildSet { while (rs.next()) add(rs.getString(1)) } }
         }
     }
 }

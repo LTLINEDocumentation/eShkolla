@@ -192,63 +192,6 @@ fun Application.configureSchoolOperationsApi(authService: AuthService) {
                 else call.respond(HttpStatusCode.NoContent)
             }
 
-            get("/notifications") {
-                requireSchoolUser(call, authService) ?: return@get
-                val rows = Database.connection().use { connection ->
-                    connection.prepareStatement(
-                        "SELECT id,title,message,audience,created_at,active FROM notifications WHERE active=TRUE ORDER BY created_at DESC"
-                    ).use { ps ->
-                        ps.executeQuery().use { rs ->
-                            buildList {
-                                while (rs.next()) {
-                                    add(
-                                        NotificationDto(
-                                            rs.getString("id"),
-                                            rs.getString("title"),
-                                            rs.getString("message"),
-                                            rs.getString("audience"),
-                                            rs.getTimestamp("created_at").toInstant().toString(),
-                                            rs.getBoolean("active")
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                call.respond(rows)
-            }
-
-            post("/notifications") {
-                val user = requireSchoolUser(call, authService) ?: return@post
-                if (user.role !in setOf("ADMINISTRATOR", "DREJTOR")) {
-                    call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm administratori ose drejtori mund të publikojë njoftime."))
-                    return@post
-                }
-                val request = call.receive<NotificationRequest>()
-                if (request.title.isBlank() || request.message.isBlank()) {
-                    call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Titulli dhe mesazhi janë të detyrueshme."))
-                    return@post
-                }
-                val id = "NTF-${System.currentTimeMillis()}"
-                val title = request.title.trim()
-                val message = request.message.trim()
-                val audience = request.audience.trim().uppercase().ifBlank { "ALL" }
-                Database.connection().use { connection ->
-                    connection.prepareStatement("INSERT INTO notifications(id,title,message,audience) VALUES(?,?,?,?)").use { ps ->
-                        ps.setString(1, id)
-                        ps.setString(2, title)
-                        ps.setString(3, message)
-                        ps.setString(4, audience)
-                        ps.executeUpdate()
-                    }
-                }
-                call.respond(
-                    HttpStatusCode.Created,
-                    NotificationDto(id, title, message, audience, java.time.Instant.now().toString(), true)
-                )
-            }
-
             get("/reports/academic") {
                 val user = requireSchoolUser(call, authService) ?: return@get
                 val requestedStudentId = call.request.queryParameters["studentId"]?.takeIf { it.isNotBlank() }

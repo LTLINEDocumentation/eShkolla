@@ -163,3 +163,5 @@ private suspend fun notificationUser(call: io.ktor.server.application.Applicatio
     if (user == null) call.respond(HttpStatusCode.Unauthorized, ApiError("UNAUTHORIZED", "Kyçja është e nevojshme."))
     return user
 }
+
+internal fun absenceStatusLabel(status:String):String=when(status.trim().uppercase()){"E_ARSYESHME"->"E arsyeshme";"E_PAAFTESUAR"->"E paarsyeshme";else->status}

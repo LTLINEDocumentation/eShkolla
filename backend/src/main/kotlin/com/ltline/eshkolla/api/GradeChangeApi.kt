@@ -52,7 +52,7 @@ fun Application.configureGradeChangeApi(auth:AuthService){
     c.commit();true
    }catch(e:SQLException){c.rollback();throw e}finally{c.autoCommit=true}}
    if(created){
-    val details=Database.connection().use{c->c.prepareStatement("SELECT teacher_id,student_id,subject_id,proposed_value FROM grade_change_requests WHERE id=?").use{p->p.setString(1,id);p.executeQuery().use{rs->if(rs.next())listOf(rs.getString(1),rs.getString(2),rs.getString(3),rs.getInt(4).toString())else null}}}
+    val details=Database.connection().use{c->c.prepareStatement("SELECT r.teacher_id,st.full_name,COALESCE(su.name,r.subject_id),r.proposed_value FROM grade_change_requests r JOIN students st ON st.id=r.student_id LEFT JOIN subjects su ON su.id=r.subject_id WHERE r.id=?").use{p->p.setString(1,id);p.executeQuery().use{rs->if(rs.next())listOf(rs.getString(1),rs.getString(2),rs.getString(3),rs.getInt(4).toString())else null}}}
     if(details!=null)NotificationService.notifyTeacherById(details[0],"Kërkesë për ndryshim note","Drejtori ka propozuar notën ${details[3]} për nxënësin ${details[1]} në lëndën ${details[2]}. Ju lutemi shqyrtojeni kërkesën.","GRADE_CHANGE_REQUEST",id,user.id)
     call.respond(HttpStatusCode.Created,mapOf("id" to id,"status" to "PENDING"))
    }
@@ -80,10 +80,10 @@ fun Application.configureGradeChangeApi(auth:AuthService){
    }catch(e:SQLException){c.rollback();throw e}finally{c.autoCommit=true}}
    if(done){
     val requester=Database.connection().use{c->c.prepareStatement("SELECT requested_by FROM grade_change_requests WHERE id=?").use{p->p.setString(1,id);p.executeQuery().use{rs->if(rs.next())rs.getString(1)else null}}}
-    if(requester!=null)NotificationService.notifyUser(requester,if(decision=="APPROVE")"Ndryshimi i notës u aprovua" else "Ndryshimi i notës u refuzua","Mësimdhënësi e ka ${if(decision=="APPROVE")"aprovuar" else "refuzuar"} propozimin tuaj për nxënësin.","GRADE_CHANGE_DECISION","GRADE_CHANGE_REQUEST",id,user.id)
+    if(requester!=null)NotificationService.notifyUser(requester,if(decision=="APPROVE")"Ndryshimi i notës u aprovua" else "Ndryshimi i notës u refuzua","Kërkesa ${id} për ndryshimin e notës u ${if(decision=="APPROVE")"aprovua" else "refuzua"} nga mësimdhënësi përgjegjës.","GRADE_CHANGE_DECISION","GRADE_CHANGE_REQUEST",id,user.id)
     if(decision=="APPROVE"){
-     val details=Database.connection().use{c->c.prepareStatement("SELECT student_id,subject_id,teacher_id,grade_id FROM grade_change_requests WHERE id=?").use{p->p.setString(1,id);p.executeQuery().use{rs->if(rs.next())listOf(rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(4) ?: id)else null}}}
-     if(details!=null)NotificationService.notifyStudentContacts(user.id,details[2],details[0],"Nota u përditësua","Nota për nxënësin ${details[0]} në lëndën ${details[1]} u përditësua pas aprovimit.","GRADE",details[3])
+     val details=Database.connection().use{c->c.prepareStatement("SELECT r.student_id,st.full_name,r.subject_id,COALESCE(su.name,r.subject_id),r.teacher_id,r.grade_id FROM grade_change_requests r JOIN students st ON st.id=r.student_id LEFT JOIN subjects su ON su.id=r.subject_id WHERE r.id=?").use{p->p.setString(1,id);p.executeQuery().use{rs->if(rs.next())listOf(rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(4) ?: id)else null}}}
+     if(details!=null)NotificationService.notifyStudentContacts(user.id,details[4],details[0],"Nota u përditësua","Nota për nxënësin ${details[1]} në lëndën ${details[3]} u përditësua pas aprovimit.","GRADE",details[5] ?: id)
     }
     call.respond(mapOf("id" to id,"status" to if(decision=="APPROVE")"APPROVED" else "REJECTED"))
    }

@@ -8,7 +8,6 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
@@ -20,7 +19,6 @@ import java.util.UUID
 @Serializable data class AdminSchoolUpdate(val name:String,val address:String?=null)
 @Serializable data class AdminSubjectUpdate(val name:String,val code:String?=null)
 @Serializable data class AdminTeacherUpdate(val fullName:String,val username:String,val subjectId:String)
-@Serializable data class AdminStudentUpdate(val fullName:String,val classId:String,val birthDate:String)
 @Serializable data class AdminUserUpdate(val username:String,val fullName:String,val role:String,val active:Boolean,val studentId:String?=null)
 @Serializable data class AdminAbsenceUpdate(val studentId:String,val subjectId:String,val teacherId:String,val date:String,val status:String,val note:String?=null)
 @Serializable data class AdminAbsenceDto(val id:String,val studentId:String,val subjectId:String,val teacherId:String,val date:String,val status:String,val note:String?=null)

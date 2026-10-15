@@ -84,7 +84,7 @@ fun Application.configureAdminCrudApi(authService:AuthService){
     validateAdminAbsence(r)?.let{call.respond(HttpStatusCode.BadRequest,ApiError("VALIDATION_ERROR",it));return@post}
     val id="ABS-"+UUID.randomUUID().toString().take(8).uppercase()
     Database.connection().use{db->db.prepareStatement("INSERT INTO absences(id,student_id,subject_id,teacher_id,date,status,note) VALUES(?,?,?,?,?,?,?)").use{p->p.setString(1,id);p.setString(2,r.studentId);p.setString(3,r.subjectId);p.setString(4,r.teacherId);p.setString(5,r.date);p.setString(6,r.status);p.setString(7,r.note?.takeIf{it.isNotBlank()});p.executeUpdate()}}
-    NotificationService.notifyStudentContacts(actor,r.teacherId,r.studentId,"U regjistrua mungesa","U regjistrua mungesa për nxënësin ${adminStudentName(r.studentId)} më ${r.date}. Statusi: ${r.status}.","ABSENCE",id)
+    NotificationService.notifyStudentContacts(actor,r.teacherId,r.studentId,"U regjistrua mungesa","U regjistrua mungesa për nxënësin ${adminStudentName(r.studentId)} më ${r.date}. Statusi: ${absenceStatusLabel(r.status)}.","ABSENCE",id)
     call.respond(HttpStatusCode.Created,AdminAbsenceDto(id,r.studentId,r.subjectId,r.teacherId,r.date,r.status,r.note))
    }
    put("/absences/{id}"){

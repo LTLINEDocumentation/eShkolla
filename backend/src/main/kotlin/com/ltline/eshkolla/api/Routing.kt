@@ -58,9 +58,20 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             val allowed = teacherId?.let(::classesForTeacher)
             val linkedStudents = if (user.role in setOf("PRIND", "NXENES")) linkedStudentIds(user.id, user.role) else null
             val visibleStudents = studentRepository.findAll().filter { (allowed == null || it.classId in allowed) && (linkedStudents == null || it.id in linkedStudents) }
-            val classes = visibleStudents.groupBy { it.classId }
-                .map { (classId, students) -> SchoolClassDto(classId, "Klasa $classId", classId.removePrefix("C").toIntOrNull()?.plus(4) ?: 8, teacherId ?: "M001", students.count { it.isActive }) }
-                .sortedBy { it.id }
+            val visibleClassIds = visibleStudents.map { it.classId }.toSet()
+            val studentCounts = visibleStudents.filter { it.isActive }.groupingBy { it.classId }.eachCount()
+            val classes = com.ltline.eshkolla.db.Database.connection().use { c ->
+                c.prepareStatement("SELECT c.id,c.name,c.grade_level,COALESCE((SELECT tc.teacher_id FROM teacher_classes tc WHERE tc.class_id=c.id ORDER BY tc.teacher_id LIMIT 1),'') AS teacher_id FROM classes c WHERE c.active=TRUE ORDER BY c.grade_level,c.name").use { p ->
+                    p.executeQuery().use { rs -> buildList {
+                        while (rs.next()) {
+                            val classId = rs.getString("id")
+                            if ((allowed == null || classId in allowed) && (linkedStudents == null || classId in visibleClassIds)) {
+                                add(SchoolClassDto(classId, rs.getString("name"), rs.getInt("grade_level"), teacherId ?: rs.getString("teacher_id"), studentCounts[classId] ?: 0))
+                            }
+                        }
+                    } }
+                }
+            }
             call.respond(classes)
         }
         get("/classes/{id}/students") {

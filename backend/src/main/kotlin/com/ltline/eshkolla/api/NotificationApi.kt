@@ -16,7 +16,7 @@ import java.sql.Connection
 import java.util.UUID
 
 @Serializable
-data class RoleRoleNotificationDto(
+data class RoleNotificationDto(
     val id: String,
     val title: String,
     val message: String,
@@ -103,7 +103,7 @@ fun Application.configureNotificationApi(auth: AuthService) {
                     """.trimIndent()).use { p ->
                         p.setString(1, user.id); p.setString(2, user.id); p.setString(3, user.role)
                         p.executeQuery().use { rs -> buildList {
-                            while (rs.next()) add(NotificationDto(
+                            while (rs.next()) add(RoleNotificationDto(
                                 rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(4),
                                 rs.getString(5),rs.getString(6),rs.getString(7),rs.getString(8),
                                 rs.getString(9),rs.getTimestamp(10).toString(),rs.getBoolean(11)

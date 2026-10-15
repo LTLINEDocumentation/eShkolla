@@ -94,7 +94,7 @@
       return window.absences();
     }
 
-    const classStudents=(studentsData||[]).filter(s=>String(s.classId)===selected&&s.active!==false);
+    const classStudents=(studentsData||[]).filter(s=>String(s.classId)===selected);
     const rows=classStudents.map(s=>{
       const as=(d||[]).filter(a=>String(a.studentId)===String(s.id));
       return [
@@ -191,7 +191,7 @@
           </div>
         </div>`;
       $('resultCount').textContent=`${activeClasses.length} klasa/paralele`;
-      document.querySelectorAll('.admin-student-class-card').forEach(b=>{
+      document.querySelectorAll('.admin-absence-class-card').forEach(b=>{
         b.onclick=()=>{window.adminStudentsClassId=String(b.dataset.classId);window.students(true);};
       });
       return;
@@ -222,7 +222,7 @@
       </tbody></table></div>`;
     $('resultCount').textContent=`${rows.length} nxënës · ${esc(cls.name)}`;
     $('adminStudentsBack').onclick=()=>{window.adminStudentsClassId='';window.students(true);};
-    $('dynamicAdd').onclick=()=>studentForm(null);
+    $('dynamicAdd').onclick=()=>studentForm(null,selected);
     bindAdminStandardActions();
   };
 

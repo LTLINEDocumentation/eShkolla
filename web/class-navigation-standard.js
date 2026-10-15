@@ -9,6 +9,7 @@
   }
 
   function standardClassPicker(classes,onSelect){
+    $('moduleControls')?.classList.add('hidden');
     const list=activeClasses(classes);
     $('moduleContent').innerHTML=`
       <div class="class-nav-standard">
@@ -123,7 +124,8 @@
         `<td>${esc(g.value??'—')}</td>`,
         `<td>${esc(g.period||'—')}</td>`,
         `<td>${esc(g.academicYear||'—')}</td>`,
-        `<td>${esc(g.note||'—')}</td>`
+        `<td>${esc(g.note||'—')}</td>`,
+        `<td><button type="button" class="secondary admin-grade-edit" data-grade="${esc(g.id)}">Rregullo notën</button></td>`
       ]);
       $('moduleContent').innerHTML=`
         <div class="section-actions" style="margin-bottom:14px">
@@ -131,12 +133,14 @@
           <strong>${esc(cls.name)}</strong>
         </div>
         <div class="table-wrap"><table><thead><tr>
-          <th>Nxënësi</th><th>Lënda</th><th>Mësimdhënësi</th><th>Nota</th><th>Periudha</th><th>Viti shkollor</th><th>Vlerësimi</th>
+          <th>Nxënësi</th><th>Lënda</th><th>Mësimdhënësi</th><th>Nota</th><th>Periudha</th><th>Viti shkollor</th><th>Vlerësimi</th><th>Veprime</th>
         </tr></thead><tbody>
-          ${rows.length?rows.map(row=>`<tr>${row.join('')}</tr>`).join(''):'<tr><td colspan="7" class="empty-state">Nuk ka nota të regjistruara për këtë klasë.</td></tr>'}
+          ${rows.length?rows.map(row=>`<tr>${row.join('')}</tr>`).join(''):'<tr><td colspan="8" class="empty-state">Nuk ka nota të regjistruara për këtë klasë.</td></tr>'}
         </tbody></table></div>`;
       $('resultCount').textContent=`${rows.length} nota · ${esc(cls.name)}`;
       $('adminGradesBack').onclick=()=>{window.adminGradesClassId='';window.grades();};
+      document.querySelectorAll('.admin-grade-edit').forEach(b=>b.onclick=()=>window.adminEdit?.('grade',b.dataset.grade));
+      window.bindAdminFilters?.();
     };
 
     window.absences=async function standardAdminAbsences(){

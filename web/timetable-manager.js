@@ -39,11 +39,10 @@ function scheduleCodeEntryForm({classId,weekday,lessonNumber,existing,codes,clas
   const dayOptions=Object.entries(weekdayNames).slice(0,5).map(([n,l])=>`<option value="${n}" ${Number(n)===weekday?'selected':''}>${l}</option>`).join('');
   const lessonOptions=Array.from({length:6},(_,i)=>i+1).map(n=>`<option value="${n}" ${n===lessonNumber?'selected':''}>Ora ${n}</option>`).join('');
   const codeOptions=codes.filter(x=>x.active!==false).map(x=>`<option value="${x.code}">${esc(timetableCodeLabel(x))}</option>`).join('');
-  const existingCode=existing?codes.find(x=>String(x.teacherId)===String(existing.teacherId))?.code:'';
+  const existingCode=existing?codes.find(x=>String(x.teacherId)===String(existing.teacherId)&&String(x.subjectId)===String(existing.subjectId))?.code:'';
   const body=`<p class="muted">Zgjedhja bëhet sipas <strong>klasës → ditës → orës → kodit të mësimdhënësit</strong>. Lënda plotësohet automatikisht.</p><label>Klasa / paralelja<select name="classId" required>${classOptions}</select></label><label>Dita<select name="weekday" required>${dayOptions}</select></label><label>Ora<select name="lessonNumber" required>${lessonOptions}</select></label><label>Mësimdhënësi / kodi<select name="code" required><option value="">Zgjidh kodin...</option>${codeOptions}</select></label><label>Salla<input name="room" value="${esc(existing?.room||'')}" placeholder="p.sh. A-12"></label>`;
   modal(existing?'Ndrysho orën':'Cakto orë në orar',body,async f=>{
-    if(existing){await api('/api/v1/schedule/'+encodeURIComponent(existing.id),{method:'DELETE'});}
-    await api('/api/v1/management/timetable-assignment',{method:'POST',body:JSON.stringify({classId:f.get('classId'),weekday:Number(f.get('weekday')),lessonNumber:Number(f.get('lessonNumber')),code:Number(f.get('code')),room:f.get('room')||null,active:true})});
+    return api(existing?'/api/v1/management/timetable-assignment/'+encodeURIComponent(existing.id):'/api/v1/management/timetable-assignment',{method:existing?'PUT':'POST',body:JSON.stringify({classId:f.get('classId'),weekday:Number(f.get('weekday')),lessonNumber:Number(f.get('lessonNumber')),code:Number(f.get('code')),room:f.get('room')||null,active:true})});
   });
   const modalRoot=document.querySelector('.modal');
   if(modalRoot){const select=modalRoot.querySelector('[name="code"]'); if(select&&existingCode) select.value=String(existingCode);}

@@ -8,6 +8,7 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
@@ -29,6 +30,15 @@ fun Application.configureTimetableAssignmentApi(authService: AuthService) {
             if (result.error != null) { call.respond(result.status, ApiError(result.code, result.error)); return@post }
             call.respond(HttpStatusCode.Created, result.value!!)
         }
+        put("/{id}") {
+            if (requireTimetableManager(call, authService) == null) return@put
+            val id = call.parameters["id"]?.trim().orEmpty()
+            if (id.isBlank()) { call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "ID i orarit mungon.")); return@put }
+            val request = call.receive<TimetableAssignmentRequest>()
+            val result = assign(request, id)
+            if (result.error != null) { call.respond(result.status, ApiError(result.code, result.error)); return@put }
+            call.respond(HttpStatusCode.OK, result.value!!)
+        }
     } }
 }
 
@@ -43,35 +53,45 @@ private suspend fun requireTimetableManager(call: ApplicationCall, auth: AuthSer
     return user
 }
 
-private fun assign(request: TimetableAssignmentRequest): AssignmentResult {
+private fun assign(request: TimetableAssignmentRequest, existingId: String? = null): AssignmentResult {
     if (request.classId.isBlank() || request.weekday !in 1..5 || request.lessonNumber !in 1..12 || request.code !in 1..17) return AssignmentResult(HttpStatusCode.BadRequest,"VALIDATION_ERROR","Klasa, dita, ora ose kodi nuk janë valide.")
     return Database.connection().use { connection ->
         connection.autoCommit = false
         try {
+            if (existingId != null) {
+                val exists = connection.prepareStatement("SELECT 1 FROM schedules WHERE id=? LIMIT 1").use { ps -> ps.setString(1, existingId); ps.executeQuery().use { it.next() } }
+                if (!exists) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.NotFound,"NOT_FOUND","Ora që po ndryshohet nuk ekziston më.") }
+            }
             val settings = loadSettings(connection)
             if (request.lessonNumber > settings.lessons) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.BadRequest,"VALIDATION_ERROR","Kjo shkollë ka vetëm ${settings.lessons} orë në ditë.") }
             val period = buildPeriod(settings, request.lessonNumber)
             val code = connection.prepareStatement("SELECT c.teacher_id,c.subject_id,t.full_name,s.name FROM teacher_schedule_codes c JOIN teachers t ON t.id=c.teacher_id AND t.active=TRUE JOIN subjects s ON s.id=c.subject_id AND s.active=TRUE WHERE c.code=? AND c.active=TRUE").use { ps ->
                 ps.setInt(1,request.code); ps.executeQuery().use { rs -> if (rs.next()) CodeData(rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(4)) else null }
             } ?: run { connection.rollback(); return@use AssignmentResult(HttpStatusCode.BadRequest,"CODE_NOT_CONFIGURED","Kodi ${request.code} nuk ka mësimdhënës dhe lëndë të caktuar.") }
-            val allowed = connection.prepareStatement("SELECT 1 FROM teacher_subjects WHERE teacher_id=? AND subject_id=? AND class_id=? LIMIT 1").use { ps ->
+            val allowed = connection.prepareStatement("SELECT 1 FROM teacher_subjects ts JOIN classes cl ON cl.id=ts.class_id AND cl.active=TRUE WHERE ts.teacher_id=? AND ts.subject_id=? AND ts.class_id=? LIMIT 1").use { ps ->
                 ps.setString(1,code.teacherId); ps.setString(2,code.subjectId); ps.setString(3,request.classId.trim()); ps.executeQuery().use { it.next() }
             }
             if (!allowed) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.Conflict,"TEACHER_CLASS_SUBJECT_MISSING","Mësimdhënësi ${code.teacherName} nuk është i lidhur me këtë klasë/paralele për lëndën ${code.subjectName}.") }
-            val classConflict = connection.prepareStatement("SELECT id FROM schedules WHERE class_id=? AND weekday=? AND start_time=? AND active=TRUE LIMIT 1").use { ps ->
-                ps.setString(1,request.classId.trim()); ps.setInt(2,request.weekday); ps.setString(3,period.first); ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
+            if (request.active) {
+                val slotConflict = connection.prepareStatement("SELECT id FROM schedules WHERE active=TRUE AND weekday=? AND (teacher_id=? OR class_id=?) AND start_time < ? AND end_time > ? AND id<>COALESCE(?, '') LIMIT 1").use { ps ->
+                    ps.setInt(1,request.weekday); ps.setString(2,code.teacherId); ps.setString(3,request.classId.trim()); ps.setString(4,period.second); ps.setString(5,period.first); ps.setString(6,existingId)
+                    ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
+                }
+                if (slotConflict != null) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.Conflict,"SCHEDULE_CONFLICT","Mësimdhënësi ${code.teacherName} ose kjo klasë/paralele e ka të zënë këtë interval kohor.") }
             }
-            if (classConflict != null) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.Conflict,"CLASS_SLOT_OCCUPIED","Kjo klasë e ka tashmë të zënë ditën dhe orën e zgjedhur.") }
-            val teacherConflict = connection.prepareStatement("SELECT id FROM schedules WHERE teacher_id=? AND weekday=? AND start_time=? AND active=TRUE LIMIT 1").use { ps ->
-                ps.setString(1,code.teacherId); ps.setInt(2,request.weekday); ps.setString(3,period.first); ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
+            val id = existingId ?: "SCH-${UUID.randomUUID()}"
+            val changed = if (existingId == null) {
+                connection.prepareStatement("INSERT INTO schedules(id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active) VALUES(?,?,?,?,?,?,?,?,?)").use { ps ->
+                    ps.setString(1,id); ps.setString(2,request.classId.trim()); ps.setString(3,code.teacherId); ps.setString(4,code.subjectId); ps.setInt(5,request.weekday); ps.setString(6,period.first); ps.setString(7,period.second); ps.setString(8,request.room?.trim()?.takeIf { it.isNotBlank() }); ps.setBoolean(9,request.active); ps.executeUpdate()
+                }
+            } else {
+                connection.prepareStatement("UPDATE schedules SET class_id=?,teacher_id=?,subject_id=?,weekday=?,start_time=?,end_time=?,room=?,active=? WHERE id=?").use { ps ->
+                    ps.setString(1,request.classId.trim()); ps.setString(2,code.teacherId); ps.setString(3,code.subjectId); ps.setInt(4,request.weekday); ps.setString(5,period.first); ps.setString(6,period.second); ps.setString(7,request.room?.trim()?.takeIf { it.isNotBlank() }); ps.setBoolean(8,request.active); ps.setString(9,id); ps.executeUpdate()
+                }
             }
-            if (teacherConflict != null) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.Conflict,"TEACHER_SLOT_OCCUPIED","Mësimdhënësi ${code.teacherName} e ka tashmë të zënë këtë orë.") }
-            val id = "SCH-${UUID.randomUUID()}"
-            connection.prepareStatement("INSERT INTO schedules(id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active) VALUES(?,?,?,?,?,?,?,?,?)").use { ps ->
-                ps.setString(1,id); ps.setString(2,request.classId.trim()); ps.setString(3,code.teacherId); ps.setString(4,code.subjectId); ps.setInt(5,request.weekday); ps.setString(6,period.first); ps.setString(7,period.second); ps.setString(8,request.room?.trim()?.takeIf { it.isNotBlank() }); ps.setBoolean(9,request.active); ps.executeUpdate()
-            }
+            if (changed == 0) { connection.rollback(); return@use AssignmentResult(HttpStatusCode.NotFound,"NOT_FOUND","Ora që po ndryshohet nuk ekziston më.") }
             connection.commit()
-            AssignmentResult(value=TimetableAssignmentResponse(id,request.classId.trim(),request.weekday,request.lessonNumber,request.code,code.teacherId,code.teacherName,code.subjectId,code.subjectName,period.first,period.second,request.room?.trim()?.takeIf { it.isNotBlank() }))
+            AssignmentResult(status=if(existingId==null)HttpStatusCode.Created else HttpStatusCode.OK,value=TimetableAssignmentResponse(id,request.classId.trim(),request.weekday,request.lessonNumber,request.code,code.teacherId,code.teacherName,code.subjectId,code.subjectName,period.first,period.second,request.room?.trim()?.takeIf { it.isNotBlank() }))
         } catch (e: Exception) { connection.rollback(); throw e } finally { connection.autoCommit=true }
     }
 }

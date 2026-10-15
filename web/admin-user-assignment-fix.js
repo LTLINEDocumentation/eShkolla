@@ -18,9 +18,9 @@
       async f=>{
         const role=f.get('role');
         const studentId=f.get('studentId');
-        if(role==='PRIND'&&!studentId) throw Error('Për rolin Prind duhet të zgjidhet nxënësi i lidhur.');
+        if(['PRIND','NXENES'].includes(role)&&!studentId) throw Error('Për rolin Prind ose Nxënës duhet të zgjidhet nxënësi i lidhur.');
         const payload={username:f.get('username'),fullName:f.get('fullName'),password:f.get('password'),role};
-        if(role==='PRIND')payload.studentId=studentId;
+        if(['PRIND','NXENES'].includes(role))payload.studentId=studentId;
         return api('/api/v1/management/users',{method:'POST',body:JSON.stringify(payload)});
       }
     );
@@ -33,7 +33,7 @@
     };
     const updateStudentField=async()=>{
       if(!roleSelect||!wrap)return;
-      if(roleSelect.value!=='PRIND'){
+      if(!['PRIND','NXENES'].includes(roleSelect.value)){
         wrap.innerHTML='';
         wrap.classList.add('hidden');
         return;

@@ -59,7 +59,7 @@
           </div>
           <div class="admin-class-grid">
             ${activeClasses.length?activeClasses.map(x=>`
-              <button type="button" class="admin-class-card admin-student-class-card" data-class-id="${esc(x.id)}">
+              <button type="button" class="admin-class-card admin-absence-class-card" data-class-id="${esc(x.id)}">
                 <strong>${esc(x.name)}</strong><span>Klasa ${esc(x.gradeLevel)}</span>
               </button>`).join(''):'<div class="empty-state">Nuk ka klasa aktive.</div>'}
           </div>
@@ -99,7 +99,7 @@
       const as=(d||[]).filter(a=>String(a.studentId)===String(s.id));
       return [
         `<td><strong>${esc(s.fullName)}</strong></td>`,
-        `<td>${as.length?as.map(a=>`${esc(subjectsData.find(x=>String(x.id)===String(a.subjectId))?.name||a.subjectId)}: ${esc(a.date)} — ${esc(a.status)}`).join('<br>'):'—'}</td>`,
+        `<td>${as.length?as.map(a=>`${esc(subjectsData.find(x=>String(x.id)===String(a.subjectId))?.name||a.subjectId)}: ${esc(a.date)} — ${esc(absenceStatusText(a.status))}`).join('<br>'):'—'}</td>`,
         `<td>${as.length?as.map(a=>esc(a.note||'—')).join('<br>'):'—'}</td>`,
         `<td><button type="button" class="secondary admin-add-absence" data-student="${esc(s.id)}">+ Shto mungesë</button></td>`
       ];
@@ -185,7 +185,7 @@
           </div>
           <div class="admin-class-grid">
             ${activeClasses.length?activeClasses.map(x=>`
-              <button type="button" class="admin-class-card admin-absence-class-card" data-class-id="${esc(x.id)}">
+              <button type="button" class="admin-class-card admin-student-class-card" data-class-id="${esc(x.id)}">
                 <strong>${esc(x.name)}</strong><span>Klasa ${esc(x.gradeLevel)}</span>
               </button>`).join(''):'<div class="empty-state">Nuk ka klasa aktive.</div>'}
           </div>

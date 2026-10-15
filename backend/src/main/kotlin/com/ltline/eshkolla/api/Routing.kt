@@ -84,6 +84,27 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             val linkedStudents = if (user.role in setOf("PRIND", "NXENES")) linkedStudentIds(user.id, user.role) else null
             call.respond(studentRepository.findAll().filter { it.classId == classId && it.isActive && (linkedStudents == null || it.id in linkedStudents) })
         }
+        get("/subjects") {
+            val user = requireUser() ?: return@get
+            val sql = when (user.role) {
+                "ADMINISTRATOR", "DREJTOR" -> "SELECT id,name,code,active FROM subjects WHERE active=TRUE ORDER BY name"
+                "MESIMDHENES" -> "SELECT DISTINCT s.id,s.name,s.code,s.active FROM subjects s JOIN teacher_subjects ts ON ts.subject_id=s.id WHERE s.active=TRUE AND ts.teacher_id=? ORDER BY s.name"
+                "PRIND" -> "SELECT DISTINCT s.id,s.name,s.code,s.active FROM subjects s JOIN teacher_subjects ts ON ts.subject_id=s.id WHERE s.active=TRUE AND ts.class_id IN (SELECT st.class_id FROM students st JOIN parent_students ps ON ps.student_id=st.id WHERE ps.user_id=?) ORDER BY s.name"
+                "NXENES" -> "SELECT DISTINCT s.id,s.name,s.code,s.active FROM subjects s JOIN teacher_subjects ts ON ts.subject_id=s.id WHERE s.active=TRUE AND ts.class_id IN (SELECT st.class_id FROM students st JOIN student_users su ON su.student_id=st.id WHERE su.user_id=?) ORDER BY s.name"
+                else -> { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje në lëndët mësimore.")); return@get }
+            }
+            val rows = com.ltline.eshkolla.db.Database.connection().use { c ->
+                c.prepareStatement(sql).use { p ->
+                    if (user.role !in setOf("ADMINISTRATOR", "DREJTOR")) {
+                        val linkId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else user.id
+                        if (linkId.isNullOrBlank()) return@use emptyList()
+                        p.setString(1, linkId)
+                    }
+                    p.executeQuery().use { rs -> buildList { while (rs.next()) add(SubjectDto(rs.getString(1), rs.getString(2), rs.getString(3), rs.getBoolean(4))) } }
+                }
+            }
+            call.respond(rows)
+        }
         get("/students") {
             val user = requireUser() ?: return@get
             val allowed = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty())?.let(::classesForTeacher) else null

@@ -144,7 +144,7 @@ private fun validateUserCreate(request: UserCreateRequest): ApiError? {
     if (request.fullName.trim().length < 2) return ApiError("VALIDATION_ERROR", "Emri dhe mbiemri janë të detyrueshëm.")
     if (request.password.length < 10) return ApiError("VALIDATION_ERROR", "Fjalëkalimi duhet të ketë së paku 10 karaktere.")
     if (request.role !in allowedRoles) return ApiError("VALIDATION_ERROR", "Roli nuk është i vlefshëm.")
-    if (request.role == "PRIND" && request.studentId.isNullOrBlank()) return ApiError("VALIDATION_ERROR", "Për rolin Prind duhet të zgjidhet nxënësi i lidhur.")
+    if (request.role in setOf("PRIND", "NXENES") && request.studentId.isNullOrBlank()) return ApiError("VALIDATION_ERROR", "Për rolin Prind ose Nxënës duhet të zgjidhet nxënësi i lidhur.")
     return null
 }
 

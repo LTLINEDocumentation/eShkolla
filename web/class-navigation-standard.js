@@ -9,6 +9,7 @@
   }
 
   function standardClassPicker(classes,onSelect){
+    $('moduleControls')?.classList.add('hidden');
     const list=activeClasses(classes);
     $('moduleContent').innerHTML=`
       <div class="class-nav-standard">

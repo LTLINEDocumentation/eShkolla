@@ -74,34 +74,23 @@ fun Application.configureSchoolOperationsApi(authService: AuthService) {
         route("/api/v1") {
             get("/schedule") {
                 val user = requireSchoolUser(call, authService) ?: return@get
+                val sql = when (user.role) {
+                    "MESIMDHENES" -> "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active FROM schedules s JOIN teachers t ON t.id=s.teacher_id WHERE t.user_id=? AND t.active=TRUE ORDER BY s.weekday,s.start_time"
+                    "PRIND" -> "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active FROM schedules s WHERE s.active=TRUE AND s.class_id IN (SELECT st.class_id FROM students st JOIN parent_students ps ON ps.student_id=st.id WHERE ps.user_id=? AND st.active=TRUE) ORDER BY s.weekday,s.start_time"
+                    "NXENES" -> "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active FROM schedules s WHERE s.active=TRUE AND s.class_id=(SELECT st.class_id FROM students st JOIN student_users su ON su.student_id=st.id WHERE su.user_id=? AND st.active=TRUE LIMIT 1) ORDER BY s.weekday,s.start_time"
+                    "ADMINISTRATOR", "DREJTOR" -> "SELECT id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active FROM schedules WHERE active=TRUE ORDER BY weekday,start_time"
+                    else -> { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni qasje në orar.")); return@get }
+                }
                 val rows = Database.connection().use { connection ->
-                    val sql = if (user.role == "MESIMDHENES") {
-                        "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active " +
-                            "FROM schedules s JOIN teachers t ON t.id=s.teacher_id " +
-                            "WHERE t.user_id=? AND t.active=TRUE ORDER BY s.weekday,s.start_time"
-                    } else {
-                        "SELECT id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active " +
-                            "FROM schedules WHERE active=TRUE ORDER BY weekday,start_time"
-                    }
                     connection.prepareStatement(sql).use { ps ->
-                        if (user.role == "MESIMDHENES") ps.setString(1, user.id)
+                        if (user.role !in setOf("ADMINISTRATOR", "DREJTOR")) ps.setString(1, user.id)
                         ps.executeQuery().use { rs ->
                             buildList {
-                                while (rs.next()) {
-                                    add(
-                                        ScheduleDto(
-                                            rs.getString("id"),
-                                            rs.getString("class_id"),
-                                            rs.getString("teacher_id"),
-                                            rs.getString("subject_id"),
-                                            rs.getInt("weekday"),
-                                            rs.getString("start_time"),
-                                            rs.getString("end_time"),
-                                            rs.getString("room"),
-                                            rs.getBoolean("active")
-                                        )
-                                    )
-                                }
+                                while (rs.next()) add(ScheduleDto(
+                                    rs.getString("id"),rs.getString("class_id"),rs.getString("teacher_id"),
+                                    rs.getString("subject_id"),rs.getInt("weekday"),rs.getString("start_time"),
+                                    rs.getString("end_time"),rs.getString("room"),rs.getBoolean("active")
+                                ))
                             }
                         }
                     }

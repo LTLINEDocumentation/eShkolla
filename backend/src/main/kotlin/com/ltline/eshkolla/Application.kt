@@ -1,5 +1,6 @@
 package com.ltline.eshkolla
 
+import com.ltline.eshkolla.api.configureNotificationApi
 import com.ltline.eshkolla.api.configureGradeChangeApi
 import com.ltline.eshkolla.api.configureAdminDataApi
 import com.ltline.eshkolla.api.configureAdminSchoolApi
@@ -52,6 +53,7 @@ fun Application.module(){
  configureStatusPages()
  configureRouting()
  val authService=AuthService()
+ configureNotificationApi(authService)
  configureGradeChangeApi(authService)
  configureRoleApi(authService)
  configureRoleDataApi(authService)

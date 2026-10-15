@@ -218,7 +218,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             if (user.role == "MESIMDHENES" && !teacherHasSubjectInClass(teacherId, request.subjectId, student.classId)) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk keni caktim për këtë lëndë dhe klasë.")); return@post }
             val absence = AbsenceDto("A-${UUID.randomUUID().toString().take(8).uppercase()}", request.studentId, request.subjectId, teacherId, request.date.trim(), request.status.trim(), request.note?.trim()?.takeIf { it.isNotBlank() })
             val saved = absenceRepository.save(absence)
-            NotificationService.notifyStudentContacts(user.id, teacherId, request.studentId, "U regjistrua mungesa", "U regjistrua mungesa për nxënësin ${student.fullName} më ${request.date}. Statusi: ${request.status}.", "ABSENCE", saved.id)
+            NotificationService.notifyStudentContacts(user.id, teacherId, request.studentId, "U regjistrua mungesa", "U regjistrua mungesa për nxënësin ${student.fullName} më ${request.date}. Statusi: ${absenceStatusLabel(request.status)}.", "ABSENCE", saved.id)
             call.respond(HttpStatusCode.Created, saved)
         }
         put("/absences/{id}") {

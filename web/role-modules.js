@@ -252,5 +252,5 @@ window.absences=async function linkedAbsencesView(){
   const [absenceData,studentsResponse,subjects]=await Promise.all([api('/api/v1/absences'),api('/api/v1/students?page=1&pageSize=100'),api('/api/v1/subjects')]);
   const studentNames=new Map((studentsResponse.items||[]).map(x=>[String(x.id),x.fullName]));
   const subjectNames=new Map(subjects.map(x=>[String(x.id),x.name]));
-  table(['Nxënësi','Lënda','Data','Statusi','Shënim'],absenceData.map(x=>[studentNames.get(String(x.studentId))||x.studentId,subjectNames.get(String(x.subjectId))||x.subjectId,x.date,x.status,x.note||'—']));
+  table(['Nxënësi','Lënda','Data','Statusi','Shënim'],absenceData.map(x=>[studentNames.get(String(x.studentId))||x.studentId,subjectNames.get(String(x.subjectId))||x.subjectId,x.date,absenceStatusText(x.status),x.note||'—']));
 };

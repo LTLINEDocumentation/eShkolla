@@ -140,6 +140,7 @@
       $('resultCount').textContent=`${rows.length} nota · ${esc(cls.name)}`;
       $('adminGradesBack').onclick=()=>{window.adminGradesClassId='';window.grades();};
       document.querySelectorAll('.admin-grade-edit').forEach(b=>b.onclick=()=>window.adminEdit?.('grade',b.dataset.grade));
+      window.bindAdminFilters?.();
     };
 
     window.absences=async function standardAdminAbsences(){

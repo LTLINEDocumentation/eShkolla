@@ -14,6 +14,7 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 @Serializable
 data class ScheduleDto(
@@ -106,10 +107,18 @@ fun Application.configureSchoolOperationsApi(authService: AuthService) {
                 }
                 val request = call.receive<ScheduleRequest>()
                 if (!validSchedule(request)) {
-                    call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Të dhënat e orarit nuk janë valide."))
+                    call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Të dhënat e orarit nuk janë valide; ora e përfundimit duhet të jetë pas fillimit."))
                     return@post
                 }
-                val id = "SCH-${System.currentTimeMillis()}"
+                if (!scheduleAssignmentExists(request)) {
+                    call.respond(HttpStatusCode.BadRequest, ApiError("INVALID_ASSIGNMENT", "Mësimdhënësi nuk është caktuar për këtë lëndë dhe klasë/paralele."))
+                    return@post
+                }
+                if (request.active && scheduleConflict(request)) {
+                    call.respond(HttpStatusCode.Conflict, ApiError("SCHEDULE_CONFLICT", "Mësimdhënësi ose klasa e ka të zënë këtë interval kohor."))
+                    return@post
+                }
+                val id = "SCH-${UUID.randomUUID().toString().take(10).uppercase()}"
                 Database.connection().use { connection ->
                     connection.prepareStatement(
                         "INSERT INTO schedules(id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active) VALUES (?,?,?,?,?,?,?,?,?)"
@@ -138,7 +147,15 @@ fun Application.configureSchoolOperationsApi(authService: AuthService) {
                 val id = call.parameters["id"].orEmpty()
                 val request = call.receive<ScheduleRequest>()
                 if (!validSchedule(request)) {
-                    call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Të dhënat e orarit nuk janë valide."))
+                    call.respond(HttpStatusCode.BadRequest, ApiError("VALIDATION_ERROR", "Të dhënat e orarit nuk janë valide; ora e përfundimit duhet të jetë pas fillimit."))
+                    return@put
+                }
+                if (!scheduleAssignmentExists(request)) {
+                    call.respond(HttpStatusCode.BadRequest, ApiError("INVALID_ASSIGNMENT", "Mësimdhënësi nuk është caktuar për këtë lëndë dhe klasë/paralele."))
+                    return@put
+                }
+                if (request.active && scheduleConflict(request, id)) {
+                    call.respond(HttpStatusCode.Conflict, ApiError("SCHEDULE_CONFLICT", "Mësimdhënësi ose klasa e ka të zënë këtë interval kohor."))
                     return@put
                 }
                 val updated = Database.connection().use { connection ->
@@ -279,7 +296,27 @@ private fun validSchedule(request: ScheduleRequest): Boolean =
         request.subjectId.isNotBlank() &&
         request.weekday in 1..7 &&
         timeRegex.matches(request.startTime) &&
-        timeRegex.matches(request.endTime)
+        timeRegex.matches(request.endTime) &&
+        request.endTime > request.startTime
+
+private fun scheduleAssignmentExists(request: ScheduleRequest): Boolean = Database.connection().use { c ->
+    c.prepareStatement(
+        "SELECT 1 FROM teacher_subjects ts JOIN teachers t ON t.id=ts.teacher_id JOIN subjects s ON s.id=ts.subject_id JOIN classes cl ON cl.id=ts.class_id WHERE ts.teacher_id=? AND ts.subject_id=? AND ts.class_id=? AND t.active=TRUE AND s.active=TRUE AND cl.active=TRUE LIMIT 1"
+    ).use { p ->
+        p.setString(1, request.teacherId.trim()); p.setString(2, request.subjectId.trim()); p.setString(3, request.classId.trim())
+        p.executeQuery().use { it.next() }
+    }
+}
+
+private fun scheduleConflict(request: ScheduleRequest, excludingId: String? = null): Boolean = Database.connection().use { c ->
+    c.prepareStatement(
+        "SELECT 1 FROM schedules WHERE active=TRUE AND weekday=? AND (teacher_id=? OR class_id=?) AND start_time < ? AND end_time > ? AND id<>COALESCE(?, '') LIMIT 1"
+    ).use { p ->
+        p.setInt(1, request.weekday); p.setString(2, request.teacherId.trim()); p.setString(3, request.classId.trim())
+        p.setString(4, request.endTime); p.setString(5, request.startTime); p.setString(6, excludingId)
+        p.executeQuery().use { it.next() }
+    }
+}
 
 private val timeRegex = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
 

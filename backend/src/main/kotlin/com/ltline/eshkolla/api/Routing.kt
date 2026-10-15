@@ -114,7 +114,9 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
             call.respond(gradeRepository.findAll(studentId, teacherId).filter { studentIds == null || it.studentId in studentIds })
         }
         post("/grades") {
-            val user = requireWriteUser() ?: return@post; val request = call.receive<GradeRequest>(); validateGrade(request)?.let { call.respond(HttpStatusCode.BadRequest, it); return@post }
+            val user = requireWriteUser() ?: return@post
+            if (user.role == "DREJTOR") { call.respond(HttpStatusCode.Forbidden, ApiError("DIRECTOR_MUST_PROPOSE", "Drejtori duhet ta dërgojë notën si propozim për aprovim nga mësimdhënësi i lëndës.")); return@post }
+            val request = call.receive<GradeRequest>(); validateGrade(request)?.let { call.respond(HttpStatusCode.BadRequest, it); return@post }
             val teacherId = if (user.role == "MESIMDHENES") authService.teacherIdFor(bearerToken().orEmpty()) else request.teacherId
             if (teacherId == null) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Profili i mësimdhënësit nuk është i lidhur.")); return@post }
             val student = studentRepository.findById(request.studentId)
@@ -125,6 +127,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
         }
         put("/grades/{id}") {
             val user = requireWriteUser() ?: return@put
+            if (user.role == "DREJTOR") { call.respond(HttpStatusCode.Forbidden, ApiError("DIRECTOR_MUST_PROPOSE", "Drejtori duhet ta dërgojë ndryshimin si propozim për aprovim nga mësimdhënësi i lëndës.")); return@put }
             val id = call.parameters["id"].orEmpty()
             val existing = gradeRepository.findById(id)
             if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet.")); return@put }
@@ -138,6 +141,7 @@ private fun io.ktor.server.routing.Route.routeApiV1() {
         }
         delete("/grades/{id}") {
             val user = requireWriteUser() ?: return@delete
+            if (user.role != "ADMINISTRATOR" && user.role != "MESIMDHENES") { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Vetëm administratori ose mësimdhënësi përgjegjës mund ta fshijë notën.")); return@delete }
             val id = call.parameters["id"].orEmpty(); val existing = gradeRepository.findById(id)
             if (existing == null) { call.respond(HttpStatusCode.NotFound, ApiError("NOT_FOUND", "Nota nuk u gjet.")); return@delete }
             if (user.role == "MESIMDHENES" && existing.teacherId != authService.teacherIdFor(bearerToken().orEmpty())) { call.respond(HttpStatusCode.Forbidden, ApiError("FORBIDDEN", "Nuk mund të fshini këtë notë.")); return@delete }

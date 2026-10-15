@@ -1,6 +1,6 @@
 (function(){
  const escText=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
- const originalGrades=window.grades;
+ let originalGrades=null;
  const currentYear=()=>{const n=new Date();const y=n.getMonth()>=8?n.getFullYear():n.getFullYear()-1;return y+'/'+(y+1)};
  const optionList=(items,selected,label)=>items.map(x=>{const v=label(x);return '<option value="'+escText(x.id)+'" '+(String(x.id)===String(selected)?'selected':'')+'>'+escText(v)+'</option>'}).join('');
  async function directorGrades(){
@@ -43,10 +43,15 @@
   $('moduleContent').prepend(box);
   box.querySelectorAll('.grade-change-approve,.grade-change-reject').forEach(b=>b.onclick=async()=>{const approve=b.classList.contains('grade-change-approve');const note=approve?'':(prompt('Shënoni arsyen e refuzimit (opsionale):')||'');b.disabled=true;try{await api('/api/v1/grade-change-requests/'+encodeURIComponent(b.dataset.id)+'/decision',{method:'POST',body:JSON.stringify({decision:approve?'APPROVE':'REJECT',note})});await window.grades()}catch(e){alert(e.message);b.disabled=false}});
  }
- window.grades=async function gradeChangeRoleRouter(){
-  if(currentUser?.role==='DREJTOR')return directorGrades();
-  await originalGrades();
-  if(currentUser?.role==='MESIMDHENES')await addTeacherRequests();
+ window.initializeGradeChangeUI=function(){
+  if(window.__gradeChangeUIInstalled)return;
+  originalGrades=window.grades;
+  window.grades=async function gradeChangeRoleRouter(){
+   if(currentUser?.role==='DREJTOR')return directorGrades();
+   await originalGrades();
+   if(currentUser?.role==='MESIMDHENES')await addTeacherRequests();
+  };
+  window.__gradeChangeUIInstalled=true;
  };
  const css=document.createElement('style');css.textContent='.grade-change-panel{display:grid;gap:14px;margin-bottom:20px}.grade-change-panel h4{margin:8px 0 0}.grade-change-status{display:inline-block;padding:4px 8px;border-radius:6px;background:#f2f4f7;font-weight:700;font-size:12px}.grade-change-status.pending{background:#fff4ce;color:#854d0e}.grade-change-status.approved{background:#dcfae6;color:#067647}.grade-change-status.rejected{background:#fee4e2;color:#b42318}.grade-change-review{border:1px solid #f0c36d;border-radius:12px;padding:14px;background:#fffdf5}.admin-grade-entry{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0}.admin-grade-entry button{padding:4px 8px;font-size:12px}';document.head.appendChild(css);
 })();

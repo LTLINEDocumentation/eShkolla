@@ -2,7 +2,6 @@ window.refreshNotificationBadge = async function refreshNotificationBadge(source
   try {
     const items = sourceItems || await api('/api/v1/notifications');
     const unread = items.filter(n=>!n.isRead).length;
-  await window.refreshNotificationBadge?.(items);
     const badge = $('notificationsBadge');
     const cardBadge = $('notificationCardBadge');
     [badge,cardBadge].filter(Boolean).forEach(el=>{el.textContent=unread>99?'99+':String(unread);el.classList.toggle('hidden',unread===0);});
@@ -16,6 +15,7 @@ window.renderNotifications = async function renderNotifications(){
   const items = await api('/api/v1/notifications');
   const canPublish = ['ADMINISTRATOR','DREJTOR'].includes(currentUser?.role);
   const unread = items.filter(n=>!n.isRead).length;
+  await window.refreshNotificationBadge?.(items);
   const audienceLabels = {ALL:'Të gjithë',ADMINISTRATOR:'Administratorët',DREJTOR:'Drejtorët',MESIMDHENES:'Mësimdhënësit',PRIND:'Prindërit',NXENES:'Nxënësit'};
   $('moduleContent').innerHTML = `
     ${canPublish ? `<form id="notificationComposer" class="notification-composer">

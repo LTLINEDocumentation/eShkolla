@@ -1,4 +1,4 @@
-window.renderNotifications = async function renderNotifications(){
+window.refreshNotificationBadge = async function refreshNotificationBadge(sourceItems){\n  try {\n    const items = sourceItems || await api('/api/v1/notifications');\n    const unread = items.filter(n=>!n.isRead).length;\n  await window.refreshNotificationBadge?.(items);\n    const badge = $('notificationsBadge');\n    const cardBadge = $('notificationCardBadge');\n    [badge,cardBadge].filter(Boolean).forEach(el=>{el.textContent=unread>99?'99+':String(unread);el.classList.toggle('hidden',unread===0);});\n    const shortcut = $('notificationsShortcut');\n    if(shortcut) shortcut.setAttribute('aria-label',unread?`Njoftimet, ${unread} të palexuara`:'Njoftimet');\n    return unread;\n  } catch(e) { console.warn('Nuk u lexua numri i njoftimeve',e); return null; }\n};\n\nwindow.renderNotifications = async function renderNotifications(){
   const items = await api('/api/v1/notifications');
   const canPublish = ['ADMINISTRATOR','DREJTOR'].includes(currentUser?.role);
   const unread = items.filter(n=>!n.isRead).length;

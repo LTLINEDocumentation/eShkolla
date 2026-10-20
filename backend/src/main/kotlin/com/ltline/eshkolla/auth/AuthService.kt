@@ -32,6 +32,7 @@ class AuthService {
 
     fun userFor(token: String): UserDto? = sessions[token]?.toDto()
     fun logout(token: String) { sessions.remove(token) }
+    fun invalidateUserSessions(userId: String) { sessions.entries.removeIf { it.value.id == userId } }
 
     fun teacherIdFor(token: String): String? {
         val account = sessions[token] ?: return null

@@ -220,9 +220,9 @@ private fun loadScopedSchedule(user: UserDto, classId: String?): List<ScheduleDt
         when (user.role) {
             "MESIMDHENES" -> {
                 sql = if (requestedClass == null) {
-                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active FROM schedules s JOIN teachers t ON t.id=s.teacher_id WHERE t.user_id=? AND t.active=TRUE AND s.active=TRUE ORDER BY s.weekday,s.start_time"
+                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN teachers t ON t.id=s.teacher_id JOIN classes c ON c.id=s.class_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE t.user_id=? AND t.active=TRUE AND s.active=TRUE ORDER BY s.weekday,s.start_time"
                 } else {
-                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active FROM schedules s JOIN teachers t ON t.id=s.teacher_id WHERE t.user_id=? AND t.active=TRUE AND s.active=TRUE AND s.class_id=? ORDER BY s.weekday,s.start_time"
+                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN teachers t ON t.id=s.teacher_id JOIN classes c ON c.id=s.class_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE t.user_id=? AND t.active=TRUE AND s.active=TRUE AND s.class_id=? ORDER BY s.weekday,s.start_time"
                 }
                 params += user.id
                 if (requestedClass != null) params += requestedClass
@@ -230,18 +230,18 @@ private fun loadScopedSchedule(user: UserDto, classId: String?): List<ScheduleDt
             "NXENES" -> {
                 val studentId = findStudentId(user.id) ?: return@use emptyList()
                 val studentClass = findStudentClass(studentId) ?: return@use emptyList()
-                sql = "SELECT id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active FROM schedules WHERE class_id=? AND active=TRUE ORDER BY weekday,start_time"
+                sql = "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN classes c ON c.id=s.class_id JOIN teachers t ON t.id=s.teacher_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE s.class_id=? AND s.active=TRUE AND t.active=TRUE ORDER BY s.weekday,s.start_time"
                 params += studentClass
             }
             "PRIND" -> {
-                sql = "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active FROM schedules s WHERE s.class_id IN (SELECT st.class_id FROM students st JOIN parent_students p ON p.student_id=st.id WHERE p.user_id=? AND st.active=TRUE) AND s.active=TRUE ORDER BY s.weekday,s.start_time"
+                sql = "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN classes c ON c.id=s.class_id JOIN teachers t ON t.id=s.teacher_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE s.class_id IN (SELECT st.class_id FROM students st JOIN parent_students p ON p.student_id=st.id WHERE p.user_id=? AND st.active=TRUE) AND s.active=TRUE AND t.active=TRUE ORDER BY s.weekday,s.start_time"
                 params += user.id
             }
             else -> {
                 sql = if (requestedClass == null) {
-                    "SELECT id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active FROM schedules WHERE active=TRUE ORDER BY weekday,start_time"
+                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN classes c ON c.id=s.class_id JOIN teachers t ON t.id=s.teacher_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE s.active=TRUE AND t.active=TRUE ORDER BY s.weekday,s.start_time"
                 } else {
-                    "SELECT id,class_id,teacher_id,subject_id,weekday,start_time,end_time,room,active FROM schedules WHERE active=TRUE AND class_id=? ORDER BY weekday,start_time"
+                    "SELECT s.id,s.class_id,s.teacher_id,s.subject_id,s.weekday,s.start_time,s.end_time,s.room,s.active,c.name AS class_name,t.full_name AS teacher_name,su.name AS subject_name FROM schedules s JOIN classes c ON c.id=s.class_id JOIN teachers t ON t.id=s.teacher_id LEFT JOIN subjects su ON su.id=s.subject_id WHERE s.active=TRUE AND t.active=TRUE AND s.class_id=? ORDER BY s.weekday,s.start_time"
                 }
                 if (requestedClass != null) params += requestedClass
             }
@@ -262,7 +262,10 @@ private fun loadScopedSchedule(user: UserDto, classId: String?): List<ScheduleDt
                                 startTime = resultSet.getString("start_time"),
                                 endTime = resultSet.getString("end_time"),
                                 room = resultSet.getString("room"),
-                                active = resultSet.getBoolean("active")
+                                active = resultSet.getBoolean("active"),
+                                className = resultSet.getString("class_name"),
+                                teacherName = resultSet.getString("teacher_name"),
+                                subjectName = resultSet.getString("subject_name")
                             )
                         )
                     }

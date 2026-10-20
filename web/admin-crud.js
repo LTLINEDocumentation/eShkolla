@@ -39,4 +39,23 @@ async function editSchool(id){const d=await api('/api/v1/management/schools');co
 async function editSubject(id){const d=await api('/api/v1/management/subjects');const x=d.find(v=>v.id===id);if(!x)return;modal('Rregullo lëndën',field('name','Emri i lëndës','text',`required value="${esc(x.name)}"`)+field('code','Kodi','text',`value="${esc(x.code||'')}"`),async f=>api(`/api/v1/management/subjects/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify({name:f.get('name'),code:f.get('code')})}))}
 async function editTeacher(id){const [d,s]=await Promise.all([api('/api/v1/management/teachers'),api('/api/v1/management/subjects')]);const x=d.find(v=>v.id===id);if(!x)return;modal('Rregullo mësimdhënësin',field('fullName','Emri dhe mbiemri','text',`required value="${esc(x.fullName)}"`)+field('username','Përdoruesi','text',`required value="${esc(x.username)}"`)+`<label>Lënda kryesore<select name="subjectId" required>${s.map(v=>`<option value="${esc(v.id)}" ${v.id===x.subjectId?'selected':''}>${esc(v.name)}</option>`).join('')}</select></label>`,async f=>api(`/api/v1/management/teachers/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify({fullName:f.get('fullName'),username:f.get('username'),subjectId:f.get('subjectId')})}))}
 async function editStudent(id){const [d,c]=await Promise.all([api('/api/v1/management/students'),api('/api/v1/management/classes')]);const x=d.find(v=>v.id===id);if(!x)return;modal('Rregullo nxënësin',field('fullName','Emri dhe mbiemri','text',`required value="${esc(x.fullName)}"`)+field('birthDate','Datëlindja','date',`required value="${esc(x.birthDate)}"`)+`<label>Klasa / paralelja<select name="classId" required>${c.map(v=>`<option value="${esc(v.id)}" ${v.id===x.classId?'selected':''}>${esc(v.name)} — ${esc(v.gradeLevel)}</option>`).join('')}</select></label>`,async f=>api(`/api/v1/management/students/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify({fullName:f.get('fullName'),birthDate:f.get('birthDate'),classId:f.get('classId')})}))}
-async function editUser(id){const d=await api('/api/v1/management/users');const x=d.find(v=>v.id===id);if(!x)return;modal('Rregullo përdoruesin',field('username','Përdoruesi','text',`required value="${esc(x.username)}"`)+field('fullName','Emri dhe mbiemri','text',`required value="${esc(x.fullName)}"`)+`<label>Roli<select name="role" required>${Object.entries(roles).map(([k,v])=>`<option value="${k}" ${k===x.role?'selected':''}>${esc(v)}</option>`).join('')}</select></label><label>Statusi<select name="active"><option value="true" ${x.active?'selected':''}>Aktiv</option><option value="false" ${!x.active?'selected':''}>Joaktiv</option></select></label>`,async f=>api(`/api/v1/management/users/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify({username:f.get('username'),fullName:f.get('fullName'),role:f.get('role'),active:f.get('active')==='true'})}))}
+async function editUser(id){
+  const [d,students]=await Promise.all([api('/api/v1/management/users'),api('/api/v1/management/students')]);
+  const x=d.find(v=>v.id===id);if(!x)return;
+  const body=field('username','Përdoruesi','text',`required value="${esc(x.username)}"`)+
+    field('fullName','Emri dhe mbiemri','text',`required value="${esc(x.fullName)}"`)+
+    `<label>Roli<select name="role" id="editUserRole" required>${Object.entries(roles).map(([k,v])=>`<option value="${k}" ${k===x.role?'selected':''}>${esc(v)}</option>`).join('')}</select></label><div id="editUserStudentWrap" class="hidden"></div><label>Statusi<select name="active"><option value="true" ${x.active?'selected':''}>Aktiv</option><option value="false" ${!x.active?'selected':''}>Joaktiv</option></select></label>`;
+  modal('Rregullo përdoruesin',body,async f=>{
+    const role=f.get('role'),studentId=f.get('studentId')||null;
+    if(['PRIND','NXENES'].includes(role)&&!studentId)throw Error('Për rolin Prind ose Nxënës duhet të zgjidhet nxënësi i lidhur.');
+    return api(`/api/v1/management/users/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify({username:f.get('username'),fullName:f.get('fullName'),role,active:f.get('active')==='true',studentId:['PRIND','NXENES'].includes(role)?studentId:null})});
+  });
+  const roleSelect=document.getElementById('editUserRole'),wrap=document.getElementById('editUserStudentWrap');
+  const updateStudentField=()=>{
+    if(!roleSelect||!wrap)return;
+    if(!['PRIND','NXENES'].includes(roleSelect.value)){wrap.innerHTML='';wrap.classList.add('hidden');return;}
+    wrap.innerHTML=`<label>Nxënësi i lidhur<select name="studentId" required><option value="">Zgjidh nxënësin...</option>${students.filter(v=>v.active!==false).map(v=>`<option value="${esc(v.id)}" ${String(v.id)===String(x.studentId||'')?'selected':''}>${esc(v.fullName)} — ${esc(v.className||v.classId||'')}</option>`).join('')}</select></label>`;
+    wrap.classList.remove('hidden');
+  };
+  roleSelect?.addEventListener('change',updateStudentField);updateStudentField();
+}

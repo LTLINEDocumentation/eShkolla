@@ -1,12 +1,10 @@
-const _timetableBase=window.timetable;
-async function timetable(){
-  await _timetableBase();
-  const data=await api('/api/v1/timetable');
+async function timetableEntriesView(timetableData=null){
+  const data=timetableData||await api('/api/v1/timetable');
   const canManage=['ADMINISTRATOR','DREJTOR'].includes(currentUser?.role);
   const [classes,teachers,subjects]=canManage?await Promise.all([api('/api/v1/management/classes'),api('/api/v1/management/teachers'),api('/api/v1/management/subjects')]):[[],[],[]];
-  const className=id=>classes.find(x=>x.id===id)?.name||id;
-  const teacherName=id=>teachers.find(x=>x.id===id)?.fullName||id;
-  const subjectName=id=>subjects.find(x=>x.id===id)?.name||id;
+  const className=id=>classes.find(x=>x.id===id)?.name||data.schedule.find(x=>String(x.classId)===String(id))?.className||id;
+  const teacherName=id=>teachers.find(x=>x.id===id)?.fullName||data.schedule.find(x=>String(x.teacherId)===String(id))?.teacherName||id;
+  const subjectName=id=>subjects.find(x=>x.id===id)?.name||data.schedule.find(x=>String(x.subjectId)===String(id))?.subjectName||id;
   const rows=(data.schedule||[]).map(x=>`<tr><td>${esc(weekdayNames[x.weekday]||x.weekday)}</td><td>${esc(x.startTime)} – ${esc(x.endTime)}</td><td>${esc(className(x.classId))}</td><td>${esc(subjectName(x.subjectId))}</td><td>${esc(teacherName(x.teacherId))}</td><td>${esc(x.room||'—')}</td>${canManage?`<td><div class="section-actions"><button type="button" class="secondary timetable-edit" data-id="${esc(x.id)}">Rregullo</button><button type="button" class="secondary timetable-delete" data-id="${esc(x.id)}">Fshij</button></div></td>`:''}</tr>`).join('');
   const section=document.createElement('div');section.style.marginTop='18px';section.innerHTML=`<div class="section-title"><div><p class="eyebrow">Orari javor</p><h3>Oraret e klasave</h3></div>${canManage?'<button class="primary" id="timetableAdd">+ Shto orë</button>':''}</div><div class="table-wrap"><table><thead><tr><th>Dita</th><th>Koha</th><th>Klasa</th><th>Lënda</th><th>Mësimdhënësi</th><th>Salla</th>${canManage?'<th>Veprime</th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${canManage?7:6}" class="empty-state">Nuk ka orë të regjistruara.</td></tr>`}</tbody></table></div>`;
   $('moduleContent').appendChild(section);
@@ -18,36 +16,6 @@ async function timetable(){
   }
 }
 
-async function renderTimetableMatrix(data,classes){
-  const [codes]=await Promise.all([api('/api/v1/management/timetable-codes')]);
-  const codeByTeacher=new Map(codes.filter(x=>x.teacherId).map(x=>[String(x.teacherId),x.code]));
-  const orderedNames=['VI1','VI2','VII1','VII2','VIII1','VIII2','IX1','IX2'];
-  const orderedClasses=orderedNames.map(name=>classes.find(x=>String(x.name).trim().toUpperCase()===name)).filter(Boolean);
-  const fallbackClasses=classes.filter(x=>!orderedClasses.some(y=>y.id===x.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-  const visibleClasses=[...orderedClasses,...fallbackClasses];
-  const periods=data.periods||[];
-  const schedule=data.schedule||[];
-  const bySlot=new Map(schedule.map(x=>[`${x.classId}|${x.weekday}|${x.startTime}|${x.endTime}`,x]));
-  const dayGroups=Array.from({length:5},(_,i)=>i+1).map(day=>{
-    const cols=periods.map(p=>`<th>${p.lessonNumber}</th>`).join('');
-    const body=visibleClasses.map(c=>`<tr><th>${esc(c.name)}</th>${periods.map(p=>{
-      const start=p.startTime,end=p.endTime;const x=bySlot.get(`${c.id}|${day}|${start}|${end}`);const code=x?codeByTeacher.get(String(x.teacherId)):null;
-      return `<td title="${x?esc(`${subjectNameForMatrix(x,codes)} — ${teacherNameForMatrix(x,codes)}`):''}">${x?(code??'—'):'·'}</td>`;
-    }).join('')}</tr>`).join('');
-    return `<div class="table-wrap" style="margin-top:12px"><table class="timetable-matrix"><thead><tr><th>${esc(weekdayNames[day])}</th>${cols}</tr></thead><tbody>${body||`<tr><td colspan="${periods.length+1}" class="empty-state">Nuk ka klasa të regjistruara.</td></tr>`}</tbody></table></div>`;
-  }).join('');
-  const legend=codes.filter(x=>x.displayName||x.teacherId).sort((a,b)=>a.code-b.code).map(x=>`<span style="display:inline-flex;gap:5px;align-items:center;margin:3px 10px 3px 0"><strong>${x.code}</strong> — ${esc(x.displayName||x.teacherId||'')}</span>`).join('');
-  const wrapper=document.createElement('div');wrapper.style.marginTop='22px';wrapper.innerHTML=`<div class="section-title"><div><p class="eyebrow">Korniza e tabelave</p><h3>Klasa → dita → ora → numri i mësimdhënësit</h3><p class="muted">Numri në qelizë është kodi i mësimdhënësit. Rreshtat janë VI1, VI2, VII1, VII2, VIII1, VIII2, IX1, IX2.</p></div></div>${dayGroups}<div class="card" style="margin-top:12px;padding:14px"><p class="eyebrow">Legjenda e kodeve</p><div>${legend||'<span class="muted">Nuk ka kode të caktuara.</span>'}</div></div>`;
-  $('moduleContent').appendChild(wrapper);
-}
-function subjectNameForMatrix(x,codes){return codes.find(c=>c.teacherId===x.teacherId)?.subjectName||''}
-function teacherNameForMatrix(x,codes){return codes.find(c=>c.teacherId===x.teacherId)?.displayName||x.teacherId}
+async function deleteScheduleEntry(id){if(!confirm('A jeni i sigurt që doni ta fshini këtë orë nga orari?\n\nKy veprim nuk mund të zhbëhet.'))return;try{await api('/api/v1/schedule/'+encodeURIComponent(id),{method:'DELETE'});await timetableView()}catch(e){alert(e.message)}}
 
-function scheduleEntryForm(existing=null){
-  Promise.all([api('/api/v1/management/classes'),api('/api/v1/management/teachers'),api('/api/v1/management/subjects')]).then(([classes,teachers,subjects])=>{
-    const opt=(items,value,label)=>items.map(x=>`<option value="${esc(x.id)}" ${String(value)===String(x.id)?'selected':''}>${esc(label(x))}</option>`).join('');
-    const body=`<label>Dita<select name="weekday" required>${Object.entries(weekdayNames).slice(0,5).map(([n,l])=>`<option value="${n}" ${String(existing?.weekday||1)===n?'selected':''}>${l}</option>`).join('')}</select></label><label>Klasa / paralelja<select name="classId" required>${opt(classes,existing?.classId,x=>x.name)}</select></label><label>Lënda<select name="subjectId" required>${opt(subjects,existing?.subjectId,x=>x.name)}</select></label><label>Mësimdhënësi<select name="teacherId" required>${opt(teachers,existing?.teacherId,x=>x.fullName)}</select></label>`+field('startTime','Fillimi','time',`required value="${esc(existing?.startTime||'')}"`)+field('endTime','Mbarimi','time',`required value="${esc(existing?.endTime||'')}"`)+field('room','Salla','text',`value="${esc(existing?.room||'')}" placeholder="p.sh. A-12"`);
-    modal(existing?'Rregullo orën':'Shto orë në orar',body,async f=>api(existing?`/api/v1/schedule/${encodeURIComponent(existing.id)}`:'/api/v1/schedule',{method:existing?'PUT':'POST',body:JSON.stringify({classId:f.get('classId'),teacherId:f.get('teacherId'),subjectId:f.get('subjectId'),weekday:Number(f.get('weekday')),startTime:f.get('startTime'),endTime:f.get('endTime'),room:f.get('room')||null,active:true})}));
-  }).catch(e=>alert(e.message));
-}
-async function deleteScheduleEntry(id){if(!confirm('A jeni i sigurt që doni ta fshini këtë orë nga orari?\n\nKy veprim nuk mund të zhbëhet.'))return;try{await api('/api/v1/schedule/'+encodeURIComponent(id),{method:'DELETE'});await timetable()}catch(e){alert(e.message)}}
+async function timetableView(){const data=await api('/api/v1/timetable');if(!['ADMINISTRATOR','DREJTOR'].includes(currentUser?.role))await timetableSettingsView(data);await timetableEntriesView(data)}

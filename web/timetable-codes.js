@@ -27,4 +27,4 @@ const _eshkollaBaseModules=window.baseModules;
 window.baseModules=function(){const modules=_eshkollaBaseModules();if(['ADMINISTRATOR','DREJTOR'].includes(currentUser?.role)&&!modules.some(x=>x[0]==='timetableCodes'))modules.splice(Math.min(6,modules.length),0,['timetableCodes','Kodet e orarit','Mësimdhënës + lëndë + klasa/paralele']);return modules};
 const _eshkollaOpenModule=window.openModule;
 window.openModule=async function(m){if(m!=='timetableCodes')return _eshkollaOpenModule(m);currentModule=m;$('modules').classList.add('hidden');$('moduleView').classList.remove('hidden');$('moduleTitle').textContent='Kodet e orarit';$('moduleControls').classList.add('hidden');$('addStudentButton').classList.add('hidden');try{await timetableCodes()}catch(e){$('moduleContent').innerHTML=`<p class="error">${esc(e.message)}</p>`}};
-const _eshkollaIcons=window.icons||{};_eshkollaIcons.timetableCodes='🔢';
+icons.timetableCodes='🔢';
